@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<title>PeterGTPS Script Lua</title>
+<meta name="description" content="Koleksi script Lua Growtopia private server by @PeterGTPS. Koleksi script Lua Growtopia. Jelajahi, copy, dan download." />
+<meta name="theme-color" content="#101114" />
+<meta name="author" content="PeterGTPS" />
+
+<!-- ==== Link preview (WhatsApp / Discord / Twitter) ====
+     Semua URL di bawah HARUS absolut (diawali https://) karena WhatsApp
+     tidak membaca link relatif. Alamat situs:
+     https://petergt1980.github.io/petergtpsweb/  -->
+<meta property="og:type" content="website" />
+<meta property="og:locale" content="id_ID" />
+<meta property="og:site_name" content="PeterGTPS STORE"/>
+<meta property="og:title" content="PeterGTPS STORE · Script Lua by @PeterGTPS" />
+<meta property="og:description" content="Koleksi script Lua Growtopia private server by @PeterGTPS. Koleksi script Lua Growtopia. Jelajahi, copy, dan download." />
+<meta property="og:url" content="https://petergt1980.github.io/petergtpsweb/" />
+<meta property="og:image" content="assets/preview.png" />
+<meta property="og:image:secure_url" content="https://petergt1980.github.io/petergtpsweb/assets/preview.png" />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="PeterGTPS/lua-script — koleksi script Lua Growtopia" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="PeterGTPS/lua-script · Script Lua by @PeterGTPS" />
+<meta name="twitter:description" content="Koleksi script Lua Growtopia private server by @PeterGTPS." />
+<meta name="twitter:image" content="https://petergt1980.github.io/petergtpsweb/assets/preview.png" />
+
+<link rel="canonical" href="https://petergt1980.github.io/petergtpsweb/" />
+<link rel="icon" type="image/png" href="assets/petergtps.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="bg-blobs" aria-hidden="true">
+  <span class="blob blob-1"></span>
+  <span class="blob blob-2"></span>
+  <span class="blob blob-3"></span>
+  <span class="sparkle s1">✦</span>
+  <span class="sparkle s2">✧</span>
+  <span class="sparkle s3">✦</span>
+  <span class="sparkle s4">✧</span>
+</div>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#/" aria-label="PeterGTPS/lua-script">
+      <img class="brand-logo" src="assets/petergtps.png" alt="PeterGTPS logo" />
+      <span class="brand-text">PeterGTPS<em>/lua-script</em></span>
+    </a>
+
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input id="searchInput" type="search" placeholder="Cari script, tag, atau kata kunci…" autocomplete="off" aria-label="Cari script" />
+      <kbd>/</kbd>
+    </div>
+
+    <nav class="topnav">
+      <a href="#/" data-nav="home">Beranda</a>
+      <a href="#/profile" data-nav="profile">Profil</a>
+      <a href="#/about" data-nav="about">Tentang</a>
+      <a href="#/cart" data-nav="cart" class="cart-nav">🛒 Keranjang <span id="cartCount" class="cart-count">0</span></a>
+    </nav>
+
+    <div class="topbar-actions">
+      <button id="themeToggle" class="icon-btn" title="Ganti tema" aria-label="Ganti tema">☾</button>
+      <div id="authArea" class="auth-area"></div>
+    </div>
+  </div>
+</header>
+
+<main id="app" class="app" tabindex="-1"></main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <img class="brand-logo small" src="assets/petergtps.png" alt="PeterGTPS logo" />
+      <p>Dibuat dengan <span class="heart">♥</span> oleh <strong>@PeterGTPS</strong></p>
+    </div>
+    <p class="footer-note">PeterGTPS/lua-script · Script Lua untuk Growtopia private server.</p>
+    <div class="footer-links">
+      <a href="#/about">Tentang</a>
+      <a href="#/profile">Profil</a>
+      <a href="#" data-share>Bagikan</a>
+    </div>
+  </div>
+</footer>
+
+<!-- Modal: posting script (owner only) -->
+<div id="postModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="postTitle">
+    <div class="modal-head">
+      <h2 id="postTitle">Posting Script Baru <span class="spark">✦</span></h2>
+      <button class="icon-btn" data-close-modal aria-label="Tutup">✕</button>
+    </div>
+
+    <form id="postForm" class="post-form">
+      <div class="form-row two">
+        <label>
+          <span>Nama script</span>
+          <input name="name" required maxlength="60" placeholder="Contoh: Auto Farm Pink" />
+        </label>
+        <label>
+          <span>Nama file</span>
+          <input name="filename" required maxlength="80" placeholder="AutoFarm.lua" />
+        </label>
+      </div>
+
+      <label>
+        <span>Deskripsi singkat</span>
+        <textarea name="description" rows="2" maxlength="220" placeholder="Apa yang dilakukan script ini?"></textarea>
+      </label>
+
+      <div class="form-row two">
+        <label>
+          <span>Harga jual (Rp, 0 = gratis)</span>
+          <input name="price" type="number" min="0" step="1000" value="0" placeholder="Contoh: 25000" />
+        </label>
+        <label class="sale-toggle"><span>Produk toko</span><span class="check-inline"><input name="forSale" type="checkbox" /> Tampilkan sebagai produk berbayar</span></label>
+      </div>
+      <div class="form-row two">
+        <label>
+          <span>Tag <small>(pisahkan dengan koma)</small></span>
+          <input name="tags" maxlength="120" placeholder="lua, growtopia, automation" />
+        </label>
+        <label>
+          <span>Upload file .lua <small>(opsional)</small></span>
+          <input id="fileInput" type="file" accept=".lua,.txt,text/plain" />
+        </label>
+      </div>
+
+      <label>
+        <span>Atau tempel kode di sini</span>
+        <textarea name="code" id="codeInput" rows="11" spellcheck="false" placeholder="-- Script by @PeterGTPS&#10;print('Hello, PeterGTPS!')"></textarea>
+      </label>
+
+      <div class="form-foot">
+        <span class="form-hint">Otomatis dipublikasikan ke website (butuh token GitHub sekali) ✿</span>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-close-modal>Batal</button>
+          <button type="submit" class="btn btn-primary">Publikasikan</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: login owner -->
+<div id="loginModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="modal-card narrow" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+    <div class="modal-head">
+      <h2 id="loginTitle">Login Owner <span class="spark">✦</span></h2>
+      <button class="icon-btn" data-close-modal aria-label="Tutup">✕</button>
+    </div>
+    <form id="loginForm" class="post-form">
+      <p class="login-note">Hanya <strong>@PeterGTPS</strong> yang bisa memposting script. Pengunjung lain cukup lihat, copy, download, dan kasih ★.</p>
+      <label>
+        <span>Password owner</span>
+        <input name="password" type="password" required autocomplete="current-password" placeholder="••••••••" />
+      </label>
+      <div class="form-foot">
+        <span class="form-hint">Sesi tersimpan di browser ini ✿</span>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-close-modal>Batal</button>
+          <button type="submit" class="btn btn-primary">Masuk</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: share -->
+<div id="shareModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="modal-card narrow" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+    <div class="modal-head">
+      <h2 id="shareTitle">Bagikan Website <span class="spark">♥</span></h2>
+      <button class="icon-btn" data-close-modal aria-label="Tutup">✕</button>
+    </div>
+    <div class="post-form">
+      <p class="login-note">
+        Link ini yang muncul di WhatsApp saat kamu share. Biar ada nama <strong>PeterGTPS/lua-script</strong>,
+        website-nya harus di-hosting dulu (bukan localhost).
+      </p>
+      <label>
+        <span>Link website</span>
+        <input id="shareUrl" type="text" readonly />
+      </label>
+      <div class="form-actions" style="margin-left:0; flex-wrap:wrap">
+        <button class="btn btn-primary" id="shareWa">Bagikan ke WhatsApp</button>
+        <button class="btn btn-ghost" id="shareCopy">Copy link</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: publikasi ke website (owner only) -->
+<div id="publishModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="modal-card narrow" role="dialog" aria-modal="true" aria-labelledby="publishTitle">
+    <div class="modal-head">
+      <h2 id="publishTitle">Publikasikan ke Website <span class="spark">✦</span></h2>
+      <button class="icon-btn" data-close-modal aria-label="Tutup">✕</button>
+    </div>
+    <div class="post-form">
+      <p class="login-note" id="publishNote">
+        Supaya <strong>semua pengunjung</strong> bisa melihat script ini, website perlu menulis
+        daftar script ke repo GitHub. Tempel <strong>GitHub token</strong> sekali saja —
+        token disimpan di browser ini, tidak pernah ikut ter-upload ke repo.
+      </p>
+      <label>
+        <span>GitHub token <small>(fine-grained, akses Contents: Read &amp; write)</small></span>
+        <input id="ghTokenInput" type="password" placeholder="github_pat_..." autocomplete="off" spellcheck="false" />
+      </label>
+      <div class="form-foot">
+        <span class="form-hint">Hanya dikirim ke api.github.com ✿</span>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-close-modal>Nanti</button>
+          <button type="button" class="btn btn-primary" id="publishNow">Publikasikan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="assets/config.js"></script>
+<script src="assets/scripts-data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
