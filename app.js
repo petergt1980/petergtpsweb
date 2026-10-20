@@ -14,7 +14,6 @@
     siteName: 'PeterGTPS/lua-script',
     tagline: 'Script Lua Growtopia by @PeterGTPS',
     siteUrl: location.origin + location.pathname,
-    ownerPasswordHash: '2628669465',
   }, window.PETER_CONFIG || {});
 
   /* ---------------- state (memory only; no browser storage) ---------------- */
@@ -26,18 +25,6 @@
   const LS_AUTH = 'memory.auth';
   const LS_TOKEN = 'memory.token';
   const LS_HIDDEN = 'memory.hidden';
-
-  /* Password disimpan sebagai hash djb2 sederhana.
-     Ini bukan keamanan tingkat server (situs statis), tapi cukup
-     supaya pengunjung biasa tidak bisa memposting / menghapus. */
-  const hashPassword = (value) => {
-    let hash = 5381;
-    for (let i = 0; i < value.length; i += 1) {
-      hash = ((hash * 33) + value.charCodeAt(i)) >>> 0;
-    }
-    return String(hash);
-  };
-  const OWNER_HASH = String(CFG.ownerPasswordHash || '');
 
   const seed = Array.isArray(window.PETER_SEED_SCRIPTS) ? [...window.PETER_SEED_SCRIPTS] : [];
   let remoteSeed = seed;
@@ -74,7 +61,6 @@
   const loginForm = document.getElementById('loginForm');
   const shareModal = document.getElementById('shareModal');
   const publishModal = document.getElementById('publishModal');
-  const ghTokenInput = document.getElementById('ghTokenInput');
   const shareUrl = document.getElementById('shareUrl');
   const authArea = document.getElementById('authArea');
   const toastEl = document.getElementById('toast');
@@ -440,9 +426,8 @@
       ${isOwner ? `
         <div class="owner-panel">
           <h3>👑 Owner panel</h3>
-          <p>Kamu login sebagai owner. Setiap script yang kamu posting otomatis diunggah ke repo,
-             jadi <strong>semua pengunjung</strong> langsung bisa melihatnya setelah GitHub Pages selesai build (±1 menit).</p>
-          ${pending ? `<p class="publish-warn">⚠️ <strong>${pending} postingan belum publik</strong> — belum dipublikasikan ke repository. Klik <strong>Publikasikan sekarang</strong> supaya terlihat di device lain.</p>` : ''}
+          <p>Kamu login sebagai admin. Script, harga produk, dan pengaturan toko tersimpan di Supabase sehingga bisa dilihat semua pengunjung tanpa GitHub PAT.</p>
+          ${pending ? `<p class="publish-warn">⚠️ <strong>${pending} postingan belum publik</strong> — belum tersimpan di database. Klik <strong>Publikasikan sekarang</strong> supaya terlihat di perangkat lain.</p>` : ''}
           <div class="admin-metrics">
             <div class="admin-metric"><span>Total script</span><strong>${total}</strong></div>
             <div class="admin-metric"><span>Total stars</span><strong>${totalStars}</strong></div>
@@ -450,7 +435,7 @@
             <div class="admin-metric"><span>Disembunyikan</span><strong>${hiddenIds.size}</strong></div>
             <div class="admin-metric"><span>Produk dijual</span><strong>${saleItems().length}</strong></div>
           </div>
-          <div class="admin-sales-help"><strong>🛍️ Kelola produk toko</strong><p>Untuk menjual script, klik Posting Script atau Edit script, isi harga, centang “Tampilkan sebagai produk berbayar”, lalu publikasikan ke GitHub. Produk baru muncul di toko setelah deployment selesai.</p></div>
+          <div class="admin-sales-help"><strong>🛍️ Kelola produk toko</strong><p>Untuk menjual script, klik Posting Script atau Edit script, isi harga, centang “Tampilkan sebagai produk berbayar”, lalu publikasikan ke Supabase. Produk baru langsung muncul di toko.</p></div>
           <div class="row">
             <button class="btn btn-primary sm" data-open-post>+ Tambah script / produk</button>
             <button class="btn btn-ghost sm" data-publish>↻ Publikasikan sekarang</button>
@@ -469,7 +454,7 @@
         <section class="store-settings panel" id="storeSettings">
           <div class="panel-head">⚙ Pengaturan Store</div>
           <div class="panel-body">
-            <p class="page-sub" style="margin-bottom:14px">Ubah logo, nama store, tagline, dan warna aksen. Perubahan disimpan ke repository GitHub agar berlaku untuk semua pengunjung.</p>
+            <p class="page-sub" style="margin-bottom:14px">Ubah logo, nama store, tagline, dan warna aksen. Pengaturan disimpan ke Supabase agar berlaku untuk semua pengunjung.</p>
             <div class="form-row two">
               <label><span>Nama website</span><input id="settingSiteName" maxlength="80" value="${escapeHtml(CFG.siteName)}"></label>
               <label><span>Nama pemilik</span><input id="settingOwner" maxlength="60" value="${escapeHtml(CFG.owner)}"></label>
@@ -479,8 +464,8 @@
               <label><span>Warna aksen</span><input id="settingAccent" type="color" value="#ef3340"></label>
               <label><span>Ganti logo (PNG, JPG, WebP)</span><input id="settingLogo" type="file" accept="image/png,image/jpeg,image/webp"></label>
             </div>
-            <div class="row"><button class="btn btn-primary sm" data-save-settings>Simpan pengaturan ke GitHub</button></div>
-            <p class="form-hint">Token GitHub diminta saat menyimpan dan hanya disimpan sementara di memori halaman ini. Jangan gunakan token yang memiliki akses lebih luas dari repo ini.</p>
+            <div class="row"><button class="btn btn-primary sm" data-save-settings>Simpan pengaturan</button></div>
+            <p class="form-hint">Pengaturan disimpan langsung ke Supabase; tidak membutuhkan GitHub PAT.</p>
           </div>
         </section>` : ''}
 
@@ -683,7 +668,7 @@
   window.addEventListener('hashchange', render);
 
   /* ---------------- delegated events ---------------- */
-  app.addEventListener('click', (event) => {
+  app.addEventListener('click', async (event) => {
     const addCartBtn = event.target.closest('[data-add-cart]');
     if (addCartBtn) { event.preventDefault(); event.stopPropagation(); addToCart(addCartBtn.dataset.addCart); return; }
     const plus = event.target.closest('[data-cart-plus]'); if (plus) { const x=cart.find(i=>i.id===plus.dataset.cartPlus); if(x)x.qty++; syncCartToSupabase(); render(); return; }
@@ -763,10 +748,12 @@
         hiddenIds.add(id);
         writeJSON(LS_HIDDEN, [...hiddenIds]);
       }
-      toast('Postingan dihapus');
-      location.hash = '#/profile';
-      render();
-      if (remoteSeed.length) runPublish({ silent: true });
+      try {
+        if (window.PeterStoreDB?.ready) await window.PeterStoreDB.deleteProduct(id);
+        toast('Postingan dihapus dari toko');
+        location.hash = '#/profile';
+        if (window.PeterStoreDB?.ready) await refreshProductsFromSupabase(); else render();
+      } catch (error) { toast(`Gagal menghapus dari Supabase: ${error.message}`); }
       return;
     }
 
@@ -859,6 +846,7 @@
       return;
     }
     if (event.target.closest('[data-logout]')) {
+      window.PeterStoreDB?.signOut().catch((error) => console.warn('Logout:', error.message));
       isOwner = false;
       writeJSON(LS_AUTH, false);
       toast('Kamu sudah keluar dari mode owner');
@@ -921,7 +909,7 @@
     toast('File berhasil dimuat');
   });
 
-  postForm.addEventListener('submit', (event) => {
+  postForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!isOwner) {
       closeModal(postModal);
@@ -988,48 +976,17 @@
     location.hash = `#/script/${encodeURIComponent(post.id)}`;
     render();
 
-    // Langsung unggah ke repo supaya semua pengunjung bisa melihatnya.
-    runPublish({ silent: true });
+    // Simpan langsung ke database Supabase; tidak membutuhkan GitHub PAT.
+    try {
+      await window.PeterStoreDB.upsertProduct(post);
+      toast('Script tersimpan dan langsung dipublikasikan ke toko!');
+      await refreshProductsFromSupabase();
+    } catch (error) {
+      toast(`Gagal menyimpan ke Supabase: ${error.message}`);
+    }
   });
 
-  /* ---------------- publikasi ke GitHub (biar publik ikut lihat) ---------------- */
-  const GH = CFG.repo || {};
-
-  let githubTokenInMemory = '';
-  const getToken = () => githubTokenInMemory;
-  const setToken = (value) => { githubTokenInMemory = value || ''; };
-
-  const utf8ToBase64 = (text) => {
-    const bytes = new TextEncoder().encode(text);
-    let bin = '';
-    bytes.forEach((b) => { bin += String.fromCharCode(b); });
-    return btoa(bin);
-  };
-
-  const ghApi = async (path, options = {}) => {
-    const res = await fetch(`https://api.github.com/repos/${GH.owner}/${GH.name}/${path}`, {
-      ...options,
-      headers: Object.assign({
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${getToken()}`,
-        'X-GitHub-Api-Version': '2022-11-28',
-      }, options.headers || {}),
-    });
-    if (!res.ok) {
-      let message = `HTTP ${res.status}`;
-      try {
-        const body = await res.json();
-        message = body.message || message;
-      } catch { /* ignore */ }
-      const error = new Error(message);
-      error.status = res.status;
-      throw error;
-    }
-    return res.json();
-  };
-
-  /* Daftar final yang dilihat semua orang:
-     script dari repo + postingan lokal, tanpa yang sudah dihapus. */
+  /* ---------------- publikasi ke Supabase (tanpa GitHub PAT) ---------------- */
   const buildPayload = () => {
     const map = new Map();
     remoteSeed.forEach((s) => map.set(s.id, s));
@@ -1037,66 +994,23 @@
     return [...map.values()].filter((s) => !hiddenIds.has(s.id));
   };
 
-  const publishToGitHub = async () => {
-    if (!GH.owner || !GH.name) throw new Error('Repo belum diatur di assets/config.js');
-    if (!getToken()) throw new Error('Token GitHub belum diisi');
-
-    const path = GH.dataPath || 'assets/scripts-data.js';
-    let sha = null;
-
-    try {
-      const meta = await ghApi(`contents/${path}?ref=${encodeURIComponent(GH.branch || 'main')}`);
-      sha = meta.sha;
-    } catch (error) {
-      if (error.status !== 404) throw error;
-    }
-
-    const payload = buildPayload();
-    const content = `window.PETER_SEED_SCRIPTS = ${JSON.stringify(payload, null, 2)};\n`;
-    const body = {
-      message: `Update script: ${new Date().toISOString().slice(0, 10)} (${payload.length} script)`,
-      content: utf8ToBase64(content),
-      branch: GH.branch || 'main',
-    };
-    if (sha) body.sha = sha;
-
-    await ghApi(`contents/${path}`, { method: 'PUT', body: JSON.stringify(body) });
-
-    /* Simpan hasil ke memori. userPosts & hiddenIds TIDAK dihapus supaya
-       tampilan owner tetap stabil walau GitHub Pages belum selesai build. */
-    remoteSeed = payload;
-    return payload.length;
-  };
-
   const runPublish = async ({ silent } = {}) => {
-    if (!getToken()) {
-      if (silent) {
-        toast('Script tersimpan. Klik “Publikasikan sekarang” biar publik bisa lihat ♥');
-        return false;
-      }
-      openModal(publishModal);
-      if (ghTokenInput) {
-        ghTokenInput.value = '';
-        setTimeout(() => ghTokenInput.focus(), 60);
-      }
-      return false;
-    }
-
-    const button = document.getElementById('publishNow');
-    const label = button ? button.textContent : '';
-    if (button) { button.disabled = true; button.textContent = 'Mengunggah…'; }
-
+    if (!isOwner) { if (!silent) openModal(loginModal); return false; }
+    const button = document.getElementById('publishNow') || document.querySelector('[data-publish]');
+    const label = button?.textContent || '';
+    if (button) { button.disabled = true; button.textContent = 'Mempublikasikan…'; }
     try {
-      const total = await publishToGitHub();
-      toast(`Terpublikasi! ${total} script sekarang terlihat publik ♥`);
-      render();
+      if (!window.PeterStoreDB?.ready) throw new Error('Supabase belum dikonfigurasi.');
+      const payload = buildPayload();
+      await window.PeterStoreDB.publishProducts(payload);
+      await refreshProductsFromSupabase();
+      toast(`Berhasil dipublikasikan ke toko! ${payload.length} script tersedia untuk pengunjung.`);
       return true;
     } catch (error) {
       toast(`Gagal publikasi: ${error.message}`);
-      openModal(publishModal);
       return false;
     } finally {
-      if (button) { button.disabled = false; button.textContent = label; }
+      if (button) { button.disabled = false; button.textContent = label || 'Publikasikan'; }
     }
   };
 
@@ -1132,45 +1046,46 @@
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
   });
 
-  /* ---------------- modal publikasi ---------------- */
+  /* ---------------- tombol publikasi: Supabase, tanpa token ---------------- */
   document.getElementById('publishNow')?.addEventListener('click', async () => {
-    const value = ghTokenInput ? ghTokenInput.value.trim() : '';
-    if (value) setToken(value);
-    if (!getToken()) {
-      toast('Token GitHub belum diisi');
-      return;
-    }
     const ok = await runPublish({ silent: false });
     if (ok) closeModal(publishModal);
   });
 
-
-  /* ---------------- store branding settings (GitHub-backed) ---------------- */
+  /* ---------------- pengaturan store tersimpan di Supabase ---------------- */
   const setLogoEverywhere = (src) => {
+    if (!src) return;
     document.querySelectorAll('.brand-logo, .hero-avatar img').forEach((img) => { img.src = src; });
     const icon = document.querySelector('link[rel="icon"]');
     if (icon) icon.href = src;
-    const absoluteLogo = new URL(src, location.href).href;
+    const absoluteLogo = src.startsWith('data:') ? src : new URL(src, location.href).href;
     document.querySelectorAll('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="twitter:image"]').forEach((meta) => { meta.content = absoluteLogo; });
+  };
+
+  const applyStoreSettings = (settings) => {
+    if (!settings) return;
+    if (settings.site_name || settings.siteName) CFG.siteName = settings.site_name || settings.siteName;
+    if (settings.owner_name || settings.owner) CFG.owner = settings.owner_name || settings.owner;
+    if (settings.tagline) CFG.tagline = settings.tagline;
+    const accent = settings.accent;
+    if (accent) ['--pink-400','--pink-500','--pink-600'].forEach((name) => document.documentElement.style.setProperty(name, accent));
+    const logo = settings.logo_url || settings.logo;
+    if (logo) setLogoEverywhere(logo);
+    const title = document.querySelector('title');
+    if (title) title.textContent = `${CFG.siteName} · Lua Script Store`;
   };
 
   const loadStoreSettings = async () => {
     try {
-      const response = await fetch(`assets/site-settings.json?v=${Date.now()}`, { cache: 'no-store' });
-      if (!response.ok) return;
-      const settings = await response.json();
-      if (settings.siteName) CFG.siteName = settings.siteName;
-      if (settings.owner) CFG.owner = settings.owner;
-      if (settings.tagline) CFG.tagline = settings.tagline;
-      if (settings.accent) document.documentElement.style.setProperty('--pink-400', settings.accent);
-      if (settings.accent) document.documentElement.style.setProperty('--pink-500', settings.accent);
-      if (settings.accent) document.documentElement.style.setProperty('--pink-600', settings.accent);
-      if (settings.logo) setLogoEverywhere(settings.logo);
-      const title = document.querySelector('title');
-      if (title) title.textContent = `${CFG.siteName} · Lua Script Store`;
-      renderAuthArea();
-      render();
-    } catch { /* settings belum tersedia, gunakan konfigurasi bawaan */ }
+      if (window.PeterStoreDB?.ready) {
+        const settings = await window.PeterStoreDB.getSettings();
+        if (settings) applyStoreSettings(settings);
+      } else {
+        const response = await fetch(`assets/site-settings.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (response.ok) applyStoreSettings(await response.json());
+      }
+      renderAuthArea(); render();
+    } catch (error) { console.warn('Pengaturan store Supabase:', error.message); }
   };
 
   const readFileAsDataURL = (file) => new Promise((resolve, reject) => {
@@ -1180,67 +1095,33 @@
     reader.readAsDataURL(file);
   });
 
-  const base64FromDataURL = (dataUrl) => dataUrl.slice(dataUrl.indexOf(',') + 1);
-
-  const getGitHubFileSha = async (path) => {
-    try {
-      const result = await ghApi(`contents/${path}?ref=${encodeURIComponent(GH.branch || 'main')}`);
-      return result.sha;
-    } catch (error) {
-      if (error.status === 404) return null;
-      throw error;
-    }
-  };
-
-  const saveGitHubFile = async (path, contentBase64, message) => {
-    const sha = await getGitHubFileSha(path);
-    const body = { message, content: contentBase64, branch: GH.branch || 'main' };
-    if (sha) body.sha = sha;
-    await ghApi(`contents/${path}`, { method: 'PUT', body: JSON.stringify(body) });
-  };
-
   const saveStoreSettings = async () => {
     if (!isOwner) return;
-    if (!getToken()) {
-      openModal(publishModal);
-      toast('Masukkan token GitHub untuk menyimpan pengaturan');
-      return;
-    }
     const button = document.querySelector('[data-save-settings]');
     if (button) { button.disabled = true; button.textContent = 'Menyimpan…'; }
     try {
+      if (!window.PeterStoreDB?.ready) throw new Error('Supabase belum dikonfigurasi.');
       const settings = {
-        siteName: document.getElementById('settingSiteName')?.value.trim() || CFG.siteName,
-        owner: document.getElementById('settingOwner')?.value.trim() || CFG.owner,
+        site_name: document.getElementById('settingSiteName')?.value.trim() || CFG.siteName,
+        owner_name: document.getElementById('settingOwner')?.value.trim() || CFG.owner,
         tagline: document.getElementById('settingTagline')?.value.trim() || CFG.tagline,
         accent: document.getElementById('settingAccent')?.value || '#ef3340',
-        logo: 'assets/petergtps.png'
+        logo_url: 'assets/petergtps.png',
       };
-      const logoInput = document.getElementById('settingLogo');
-      const logoFile = logoInput?.files?.[0];
+      const logoFile = document.getElementById('settingLogo')?.files?.[0];
       if (logoFile) {
-        if (logoFile.type !== 'image/png') throw new Error('Gunakan file logo PNG agar tetap memakai assets/petergtps.png');
-        if (logoFile.size > 2 * 1024 * 1024) throw new Error('Ukuran logo maksimal 2 MB');
-        const dataUrl = await readFileAsDataURL(logoFile);
-        const logoPath = 'assets/petergtps.png';
-        await saveGitHubFile(logoPath, base64FromDataURL(dataUrl), 'Update store logo');
-        settings.logo = logoPath;
+        if (!logoFile.type.startsWith('image/')) throw new Error('Pilih file gambar yang valid.');
+        if (logoFile.size > 300 * 1024) throw new Error('Logo maksimal 300 KB agar aman disimpan di pengaturan.');
+        settings.logo_url = await readFileAsDataURL(logoFile);
       }
-      await saveGitHubFile('assets/site-settings.json', utf8ToBase64(JSON.stringify(settings, null, 2) + '\n'), 'Update store branding settings');
-      CFG.siteName = settings.siteName;
-      CFG.owner = settings.owner;
-      CFG.tagline = settings.tagline;
-      document.documentElement.style.setProperty('--pink-400', settings.accent);
-      document.documentElement.style.setProperty('--pink-500', settings.accent);
-      document.documentElement.style.setProperty('--pink-600', settings.accent);
-      setLogoEverywhere(settings.logo);
-      toast('Pengaturan store tersimpan ke GitHub. Tunggu Pages selesai deploy.');
-      renderAuthArea();
-      render();
+      await window.PeterStoreDB.saveSettings(settings);
+      applyStoreSettings(settings);
+      toast('Pengaturan store tersimpan ke Supabase dan langsung berlaku untuk semua pengunjung.');
+      renderAuthArea(); render();
     } catch (error) {
       toast(`Gagal menyimpan: ${error.message}`);
     } finally {
-      if (button) { button.disabled = false; button.textContent = 'Simpan pengaturan ke GitHub'; }
+      if (button) { button.disabled = false; button.textContent = 'Simpan pengaturan'; }
     }
   };
 
@@ -1272,17 +1153,36 @@
      cek ulang tiap 60 detik + saat tab dibuka kembali. */
   const startAutoRefresh = () => {
     setInterval(() => {
-      if (document.visibilityState === 'visible' && !document.hidden) refreshFromServer();
+      if (document.visibilityState === 'visible' && !document.hidden) { if (window.PeterStoreDB?.ready) refreshProductsFromSupabase().catch(() => {}); else refreshFromServer(); }
     }, 60000);
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') refreshFromServer();
+      if (document.visibilityState === 'visible') { if (window.PeterStoreDB?.ready) refreshProductsFromSupabase().catch(() => {}); else refreshFromServer(); }
     });
+  };
+
+  const fromDbProduct = (row) => ({
+    id: row.id, name: row.name, filename: row.filename, description: row.description || '',
+    tags: row.tags || [], code: row.code || '', price: Number(row.price || 0),
+    forSale: Boolean(row.for_sale), published: row.published !== false,
+    lines: lineCount(row.code || ''), stars: Number(row.stars || 0),
+    createdAt: row.created_at || new Date().toISOString(), updatedAt: row.updated_at || row.created_at || new Date().toISOString(),
+    mine: true, featured: Boolean(row.featured),
+  });
+
+  const refreshProductsFromSupabase = async () => {
+    if (!window.PeterStoreDB?.ready) return;
+    const rows = await window.PeterStoreDB.getProductsForCatalog();
+    if (rows.length) remoteSeed = rows.map(fromDbProduct);
+    userPosts = []; 
+    hiddenIds = new Set();
+    render();
   };
 
   /* ---------------- init ---------------- */
   renderAuthArea();
   render();
-  refreshFromServer();
+  if (window.PeterStoreDB?.ready) refreshProductsFromSupabase().catch((error) => console.warn('Produk Supabase:', error.message));
+  else refreshFromServer();
   loadStoreSettings();
   startAutoRefresh();
 })();

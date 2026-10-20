@@ -9,19 +9,19 @@ Website statis untuk koleksi script Lua Growtopia dengan tema dark store modern.
 
 ## Panel owner
 - Login owner memakai password yang sudah dikonfigurasi di `assets/config.js`.
-- Posting script dan perubahan store dipublikasikan melalui GitHub Contents API.
-- Saat diminta, masukkan fine-grained GitHub token dengan akses **Contents: Read and write** hanya ke repository `petergtpsweb`.
-- Token hanya disimpan di memori halaman dan tidak ditulis ke localStorage, file, atau repository. Refresh halaman akan meminta token kembali.
-- Pengaturan store dapat mengubah nama, pemilik, tagline, warna aksen, dan logo. Logo harus PNG dan ditulis ke `assets/petergtps.png`.
+- Posting script, harga produk, dan pengaturan store disimpan langsung ke Supabase. Tombol publikasi tidak membutuhkan GitHub PAT.
+- GitHub hanya diperlukan untuk menerbitkan perubahan kode website (HTML/CSS/JavaScript), bukan untuk mengubah katalog dan pengaturan toko.
+- Tidak ada GitHub PAT yang diminta atau digunakan oleh tombol publikasi.
+- Pengaturan store dapat mengubah nama, pemilik, tagline, warna aksen, dan logo; pengaturannya disimpan di Supabase.
 
 ## Catatan penyimpanan
-Website ini tidak memakai `localStorage` atau `sessionStorage`. Sesi login, token, tema, dan rating sementara berada di memori halaman. Script dan branding yang dipublikasikan disimpan permanen di repository GitHub. Untuk autentikasi owner yang aman untuk website publik, gunakan backend; password hash pada website statis bukan pengganti autentikasi server.
+Website ini tidak memakai `localStorage` atau `sessionStorage`. Sesi login, token, tema, dan rating sementara berada di memori halaman. Script dan branding yang dipublikasikan disimpan permanen di Supabase. Untuk autentikasi owner yang aman untuk website publik, gunakan backend; password hash pada website statis bukan pengganti autentikasi server.
 
 
 ## Fitur toko digital (tambahan)
 - Keranjang belanja berada di menu navigasi **Keranjang**.
 - Untuk menjual script: login owner → **Profil** → **Posting Script** atau buka script lalu **Edit script**. Isi harga dan centang **Tampilkan sebagai produk berbayar**.
-- Klik **Publikasikan sekarang** agar katalog harga ikut tersimpan ke `assets/scripts-data.js` di GitHub. Produk baru terlihat oleh pengunjung setelah GitHub Pages selesai deploy.
-- Keranjang sengaja hanya disimpan di memori halaman (tidak memakai localStorage/sessionStorage), jadi akan kosong jika halaman di-refresh.
+- Klik **Publikasikan sekarang** agar katalog harga tersimpan ke tabel `public.products` di Supabase dan langsung terlihat oleh pengunjung.
+- Keranjang akun yang login disinkronkan melalui Supabase; keranjang tamu hanya berada di memori halaman.
 - Checkout saat ini membuat dan menyalin ringkasan pesanan; pembayaran, verifikasi, dan pengiriman file dilakukan manual oleh penjual. Ini bukan payment gateway otomatis.
-- Karena website ini statis, jangan masukkan token GitHub yang memiliki akses ke repository lain. Gunakan fine-grained token dengan akses minimum ke repository website ini saja.
+- Gunakan hanya Supabase publishable/anon key pada frontend. Jangan pernah memasukkan Supabase service_role key ke website.

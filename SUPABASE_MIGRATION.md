@@ -1,30 +1,30 @@
-# PeterGTPS Store — Supabase migration kit
+# PeterGTPS Store — Supabase setup
 
-This package adds the Supabase v2 browser client, email/password admin sign-in, SQL schema with row-level security, and account-specific cart sync. Existing Lua files are carried over unchanged.
+Website ini memakai Supabase untuk publikasi katalog dan pengaturan toko. Tombol **Publikasikan sekarang** dan **Simpan pengaturan** tidak membutuhkan GitHub PAT.
 
-## 1. Create Supabase project
-1. Create a project at https://supabase.com/dashboard.
-2. Open SQL Editor and run `supabase/schema.sql`.
-3. Open Project Settings → API. Copy the Project URL and publishable/anon key.
-4. Put them in `assets/supabase-config.js`. Never put `service_role` or secret keys in a browser file or GitHub.
+## 1. Konfigurasi Supabase
+1. Buka https://supabase.com/dashboard dan pilih project kamu.
+2. Jalankan `supabase/schema.sql` melalui SQL Editor (kalau tabel sudah ada, SQL menggunakan pola aman `if not exists` dan mengganti policies terkait).
+3. Pastikan `assets/supabase-config.js` berisi Project URL dan publishable/anon key yang benar.
+4. Jangan pernah memakai `service_role` atau secret key di browser.
 
-## 2. Create admin account
-1. Supabase → Authentication → Users → Add user; use the admin email and password.
-2. Copy that user's UUID.
-3. In SQL Editor run (replace the UUID):
-   `insert into public.user_roles(user_id,role) values ('YOUR-UUID','admin') on conflict(user_id) do update set role='admin';`
-4. Admin login form now requests email and password, and checks `user_roles`.
+## 2. Admin
+1. Supabase → Authentication → Users → Add user, buat akun email/password.
+2. Salin UUID akun itu.
+3. Jalankan di SQL Editor, ganti UUID contoh:
+   ```sql
+   insert into public.user_roles(user_id, role)
+   values ('YOUR-UUID', 'admin')
+   on conflict (user_id) do update set role = 'admin';
+   ```
+4. Login melalui tombol Login owner di website.
 
-## 3. Deploy
-Commit and push all files to the `main` branch of `petergtpsweb`; GitHub Pages should publish from `main / (root)`. Keep `assets/petergtps.png` in place. Confirm `supabase/schema.sql` is in the repository.
+## 3. Publikasi langsung
+- Login admin, lalu pilih **Profil → Publikasikan sekarang** untuk menyimpan katalog script dan harga ke `public.products`.
+- Gunakan **Pengaturan Store → Simpan pengaturan** untuk menyimpan nama, pemilik, tagline, aksen, dan logo ke `public.store_settings`.
+- Pengunjung mengambil katalog dan pengaturan dari Supabase; perubahan konten tidak menunggu deploy GitHub Pages.
+- Perubahan kode website (HTML/CSS/JavaScript) masih memerlukan commit/deploy hosting seperti biasa. PAT tidak digunakan oleh fitur publikasi konten toko.
 
-## Data and security
-- Product, settings and order tables are created with RLS. Public users can read published products/settings; only a user whose `user_roles.role` is `admin` can manage products/settings.
-- The adapter exposes `PeterStoreDB.getProducts()`, `getSettings()`, `getCart()`, `setCart()`, `signIn()`, `signOut()`, and `isAdmin()` for wiring the current UI to database operations.
-- The login form is migrated to Supabase Auth and the cart syncs for signed-in accounts. Guests' carts remain memory-only.
-- **Migration scope note:** existing legacy posting/branding UI still contains GitHub Contents API publication code. Before treating the store as fully database-driven, wire those save handlers to `PeterStoreDB` products/settings CRUD and render the returned database rows. This migration kit does not silently claim those legacy save actions are already database-backed.
-- No payment processor is configured; orders/payment need a separate checkout workflow.
-- Never use the Supabase `service_role` key in frontend code.
-
-## Lua preservation
-The contents of all `.lua` files from the supplied archive were not edited.
+## Catatan
+- Checkout saat ini hanya menyalin ringkasan pesanan; tidak ada payment gateway otomatis.
+- Isi file Lua tidak diubah dalam patch ini.

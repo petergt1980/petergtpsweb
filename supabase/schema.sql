@@ -28,10 +28,14 @@ create table if not exists public.products (
   price numeric(12,2) not null default 0 check(price >= 0),
   for_sale boolean not null default false,
   published boolean not null default true,
+  stars integer not null default 0,
+  featured boolean not null default false,
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table public.products add column if not exists stars integer not null default 0;
+alter table public.products add column if not exists featured boolean not null default false;
 create table if not exists public.carts (
   user_id uuid primary key references auth.users(id) on delete cascade,
   updated_at timestamptz not null default now()

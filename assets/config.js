@@ -16,20 +16,5 @@ window.PETER_CONFIG = {
      walau dibuka dari localhost / preview. */
   siteUrl: 'https://petergt1980.github.io/petergtpsweb/',
 
-  /* Repo GitHub untuk publikasi otomatis.
-     Setiap kali owner memposting script, website menulis ulang
-     assets/scripts-data.js di repo ini lewat GitHub API. GitHub Pages
-     lalu rebuild, jadi SEMUA pengunjung langsung melihat script barunya.
-     Token GitHub TIDAK disimpan di file ini (lihat modal publikasi). */
-  repo: {
-    owner: 'petergt1980',
-    name: 'petergtpsweb',
-    branch: 'main',
-    dataPath: 'assets/scripts-data.js',
-  },
 
-  /* Hash password owner. Ini hanya menyamarkan password plaintext:
-     autentikasi di website statis tetap bisa dibongkar/ditiru oleh pengunjung.
-     Untuk keamanan nyata, pindahkan login ke backend/server. */
-  ownerPasswordHash: '2628669465',
 };

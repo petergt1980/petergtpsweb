@@ -142,7 +142,7 @@
       </label>
 
       <div class="form-foot">
-        <span class="form-hint">Otomatis dipublikasikan ke website (butuh token GitHub sekali) ✿</span>
+        <span class="form-hint">Publikasi langsung ke database toko; tidak perlu GitHub token ✿</span>
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" data-close-modal>Batal</button>
           <button type="submit" class="btn btn-primary">Publikasikan</button>
@@ -216,16 +216,10 @@
     </div>
     <div class="post-form">
       <p class="login-note" id="publishNote">
-        Supaya <strong>semua pengunjung</strong> bisa melihat script ini, website perlu menulis
-        daftar script ke repo GitHub. Tempel <strong>GitHub token</strong> sekali saja —
-        token disimpan di browser ini, tidak pernah ikut ter-upload ke repo.
+        Klik <strong>Publikasikan</strong> untuk menyimpan katalog ke Supabase. Produk akan langsung tersedia bagi pengunjung tanpa GitHub PAT atau menunggu proses deploy.
       </p>
-      <label>
-        <span>GitHub token <small>(fine-grained, akses Contents: Read &amp; write)</small></span>
-        <input id="ghTokenInput" type="password" placeholder="github_pat_..." autocomplete="off" spellcheck="false" />
-      </label>
       <div class="form-foot">
-        <span class="form-hint">Hanya dikirim ke api.github.com ✿</span>
+        <span class="form-hint">Publikasi melalui Supabase ✿</span>
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" data-close-modal>Nanti</button>
           <button type="button" class="btn btn-primary" id="publishNow">Publikasikan</button>
