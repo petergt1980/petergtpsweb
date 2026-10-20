@@ -25,3 +25,11 @@ Website ini tidak memakai `localStorage` atau `sessionStorage`. Sesi login, toke
 - Keranjang akun yang login disinkronkan melalui Supabase; keranjang tamu hanya berada di memori halaman.
 - Checkout saat ini membuat dan menyalin ringkasan pesanan; pembayaran, verifikasi, dan pengiriman file dilakukan manual oleh penjual. Ini bukan payment gateway otomatis.
 - Gunakan hanya Supabase publishable/anon key pada frontend. Jangan pernah memasukkan Supabase service_role key ke website.
+
+
+## Security update
+- Public seed catalog does not include Lua source code.
+- The `scripts/` directory containing Lua source files was removed from this deployment package.
+- Paid source must be stored only in private Supabase storage/table with restrictive RLS and served only after server-side purchase authorization.
+- Never add `service_role` or Supabase secret keys to frontend files. The publishable key may be public only with correct RLS policies.
+- This package does not itself verify that the live Supabase policies or Edge Function are secure; review those separately.
