@@ -33,3 +33,10 @@ Website ini tidak memakai `localStorage` atau `sessionStorage`. Sesi login, toke
 - Paid source must be stored only in private Supabase storage/table with restrictive RLS and served only after server-side purchase authorization.
 - Never add `service_role` or Supabase secret keys to frontend files. The publishable key may be public only with correct RLS policies.
 - This package does not itself verify that the live Supabase policies or Edge Function are secure; review those separately.
+
+
+## Katalog gratis & partner admin
+- Script gratis yang memiliki `forSale` false akan muncul di bagian Katalog Gratis; detailnya menyediakan tampilan kode, Copy, dan Download.
+- Admin dapat mengatur Partner & Links di Pengaturan Store dengan format satu baris: `Nama | Label | https://url`.
+- Jalankan `supabase/partners-migration.sql` di Supabase SQL Editor sebelum menyimpan partner dari admin.
+- Jangan masukkan source script berbayar ke `assets/scripts-data.js`; katalog publik hanya boleh memuat source yang memang gratis.

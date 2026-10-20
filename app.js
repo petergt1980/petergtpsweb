@@ -380,6 +380,8 @@
       ${heroHTML()}
       <section class="shop-strip"><div><span class="eyebrow">PETERGTPS DIGITAL STORE</span><h2>Script pilihan, siap dipesan.</h2><p>Temukan script gratis dan produk digital berbayar dari katalog.</p></div><a class="btn btn-primary" href="#/cart">🛒 Lihat keranjang <span id="cartCountInline">${cart.reduce((n,x)=>n+x.qty,0)}</span></a></section>
       ${saleItems().length ? `<div class="page-head" style="margin:24px 0 14px"><h2 class="page-title" style="font-size:22px">Produk untuk dijual</h2><p class="page-sub">${saleItems().length} produk digital</p></div><div class="repo-grid">${saleItems().map(cardHTML).join('')}</div>` : ''}
+      <div class="page-head" style="margin:24px 0 14px"><h2 class="page-title" style="font-size:22px">Katalog Gratis</h2><p class="page-sub">Script gratis bisa dibuka, dibaca, dicopy, dan diunduh tanpa checkout.</p></div>
+      <div class="repo-grid">${list.filter(s => !(s.forSale && Number(s.price) > 0)).map(cardHTML).join('') || '<p class="form-hint">Belum ada script gratis di katalog.</p>'}</div>
       <div class="page-head" style="margin-bottom:14px">
         <h2 class="page-title" style="font-size:22px">Semua Script</h2>
         <p class="page-sub">${list.length} script ditemukan${state.query ? ` untuk “${escapeHtml(state.query)}”` : ''}</p>
@@ -470,8 +472,10 @@
               <label><span>Warna aksen</span><input id="settingAccent" type="color" value="#ef3340"></label>
               <label><span>Ganti logo (PNG, JPG, WebP)</span><input id="settingLogo" type="file" accept="image/png,image/jpeg,image/webp"></label>
             </div>
+            <label><span>Partner & link (satu baris per partner: Nama | Label | URL https://...)</span><textarea id="settingPartners" rows="5" placeholder="Discord | Komunitas | https://discord.gg/INVITE
+YouTube | Tutorial | https://youtube.com/@channel">${escapeHtml((CFG.partners || []).map(p => `${p.name || ''} | ${p.label || ''} | ${p.url || ''}`).join('\n'))}</textarea></label>
             <div class="row"><button class="btn btn-primary sm" data-save-settings>Simpan pengaturan</button></div>
-            <p class="form-hint">Pengaturan disimpan langsung ke Supabase; tidak membutuhkan GitHub PAT.</p>
+            <p class="form-hint">Pengaturan disimpan ke Supabase; kolom partners_json perlu ditambahkan dengan SQL migrasi di folder supabase.</p>
           </div>
         </section>` : ''}
 
@@ -1104,6 +1108,7 @@
     if (settings.site_name || settings.siteName) CFG.siteName = settings.site_name || settings.siteName;
     if (settings.owner_name || settings.owner) CFG.owner = settings.owner_name || settings.owner;
     if (settings.tagline) CFG.tagline = settings.tagline;
+    if (settings.partners_json) { try { CFG.partners = typeof settings.partners_json === 'string' ? JSON.parse(settings.partners_json) : settings.partners_json; } catch (_) {} }
     const accent = settings.accent;
     if (accent) ['--pink-400','--pink-500','--pink-600'].forEach((name) => document.documentElement.style.setProperty(name, accent));
     const logo = settings.logo_url || settings.logo;
@@ -1142,6 +1147,7 @@
         site_name: document.getElementById('settingSiteName')?.value.trim() || CFG.siteName,
         owner_name: document.getElementById('settingOwner')?.value.trim() || CFG.owner,
         tagline: document.getElementById('settingTagline')?.value.trim() || CFG.tagline,
+        partners_json: (document.getElementById('settingPartners')?.value || '').split(/\r?\n/).map(line => { const [name='', label='', url=''] = line.split('|').map(v => v.trim()); return {name, label, url}; }).filter(p => p.name && /^https:\/\//i.test(p.url)),
         accent: document.getElementById('settingAccent')?.value || '#ef3340',
         logo_url: 'assets/petergtps.png',
       };

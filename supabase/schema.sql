@@ -14,8 +14,10 @@ create table if not exists public.store_settings (
   tagline text not null default 'Script Lua Growtopia by @PeterGTPS',
   accent text not null default '#ef3340',
   logo_url text,
+  partners_json jsonb not null default '[]'::jsonb,
   updated_at timestamptz not null default now()
 );
+alter table public.store_settings add column if not exists partners_json jsonb not null default '[]'::jsonb;
 insert into public.store_settings(id) values(true) on conflict(id) do nothing;
 
 create table if not exists public.products (
