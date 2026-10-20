@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # PeterGTPS Store — Lua Script
 
 Website statis untuk koleksi script Lua Growtopia dengan tema dark store modern.
@@ -26,6 +25,3 @@ Website ini tidak memakai `localStorage` atau `sessionStorage`. Sesi login, toke
 - Keranjang sengaja hanya disimpan di memori halaman (tidak memakai localStorage/sessionStorage), jadi akan kosong jika halaman di-refresh.
 - Checkout saat ini membuat dan menyalin ringkasan pesanan; pembayaran, verifikasi, dan pengiriman file dilakukan manual oleh penjual. Ini bukan payment gateway otomatis.
 - Karena website ini statis, jangan masukkan token GitHub yang memiliki akses ke repository lain. Gunakan fine-grained token dengan akses minimum ke repository website ini saja.
-=======
-# petergtpsweb
->>>>>>> cdc8c67e5ecd7c92ea22f31245f908065f19d305

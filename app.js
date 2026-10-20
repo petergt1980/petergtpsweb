@@ -131,6 +131,8 @@
     const badge = document.getElementById('cartCount');
     if (badge) badge.textContent = String(cart.reduce((sum, item) => sum + item.qty, 0));
   };
+  const syncCartToSupabase = async () => { try { if (window.PeterStoreDB?.client) { const {data:{user}} = await window.PeterStoreDB.client.auth.getUser(); if (user) await window.PeterStoreDB.setCart(cart); } } catch (e) { console.warn('Keranjang belum tersinkron:', e.message); } };
+
   const addToCart = (id) => {
     const product = getScript(id);
     if (!product || !product.forSale || Number(product.price) <= 0) return toast('Produk ini belum diaktifkan untuk dijual');
@@ -684,10 +686,10 @@
   app.addEventListener('click', (event) => {
     const addCartBtn = event.target.closest('[data-add-cart]');
     if (addCartBtn) { event.preventDefault(); event.stopPropagation(); addToCart(addCartBtn.dataset.addCart); return; }
-    const plus = event.target.closest('[data-cart-plus]'); if (plus) { const x=cart.find(i=>i.id===plus.dataset.cartPlus); if(x)x.qty++; render(); return; }
-    const minus = event.target.closest('[data-cart-minus]'); if (minus) { const x=cart.find(i=>i.id===minus.dataset.cartMinus); if(x)x.qty--; cart=cart.filter(i=>i.qty>0); render(); return; }
-    const remove = event.target.closest('[data-cart-remove]'); if (remove) { cart=cart.filter(i=>i.id!==remove.dataset.cartRemove); render(); return; }
-    if (event.target.closest('[data-cart-clear]')) { cart=[]; render(); return; }
+    const plus = event.target.closest('[data-cart-plus]'); if (plus) { const x=cart.find(i=>i.id===plus.dataset.cartPlus); if(x)x.qty++; syncCartToSupabase(); render(); return; }
+    const minus = event.target.closest('[data-cart-minus]'); if (minus) { const x=cart.find(i=>i.id===minus.dataset.cartMinus); if(x)x.qty--; cart=cart.filter(i=>i.qty>0); syncCartToSupabase(); render(); return; }
+    const remove = event.target.closest('[data-cart-remove]'); if (remove) { cart=cart.filter(i=>i.id!==remove.dataset.cartRemove); syncCartToSupabase(); render(); return; }
+    if (event.target.closest('[data-cart-clear]')) { cart=[]; syncCartToSupabase(); render(); return; }
     if (event.target.closest('[data-checkout]')) {
       const lines = cart.map(i=>{const p=getScript(i.id); return p ? `- ${p.name} × ${i.qty}: ${money(Number(p.price)*i.qty)}` : '';}).filter(Boolean);
       const total=cart.reduce((sum,i)=>{const p=getScript(i.id);return sum+(p?Number(p.price||0)*i.qty:0)},0);
@@ -874,21 +876,32 @@
     });
   });
 
-  loginForm.addEventListener('submit', (event) => {
+  loginForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const password = String(new FormData(loginForm).get('password') || '');
-    if (!OWNER_HASH || hashPassword(password) !== OWNER_HASH) {
-      toast('Password salah, coba lagi.');
-      loginForm.querySelector('[name="password"]').select();
-      return;
-    }
-    isOwner = true;
-    writeJSON(LS_AUTH, true);
-    loginForm.reset();
-    closeModal(loginModal);
-    toast(`Selamat datang, ${CFG.owner}!`);
-    render();
+    const formData = new FormData(loginForm);
+    const email = String(formData.get('email') || '').trim();
+    const password = String(formData.get('password') || '');
+    try {
+      if (!window.PeterStoreDB?.ready) throw new Error('Isi URL dan publishable/anon key Supabase di assets/supabase-config.js terlebih dahulu.');
+      await window.PeterStoreDB.signIn(email, password);
+      const admin = await window.PeterStoreDB.isAdmin();
+      if (!admin) { await window.PeterStoreDB.signOut(); throw new Error('Akun ini belum diberi role admin di tabel user_roles.'); }
+      isOwner = true;
+      loginForm.reset(); closeModal(loginModal);
+      toast(`Selamat datang, ${CFG.owner}!`); render();
+    } catch (err) { toast(err?.message || 'Login Supabase gagal.'); }
   });
+
+  // Restore verified admin session and hydrate the account-specific cart.
+  (async () => {
+    try {
+      if (!window.PeterStoreDB?.ready) return;
+      isOwner = await window.PeterStoreDB.isAdmin();
+      const savedCart = await window.PeterStoreDB.getCart();
+      if (savedCart.length) cart = savedCart;
+      render();
+    } catch (err) { console.warn('Supabase session/cart:', err.message); }
+  })();
 
   /* ---------------- post form ---------------- */
   fileInput.addEventListener('change', async () => {

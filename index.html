@@ -163,11 +163,15 @@
     <form id="loginForm" class="post-form">
       <p class="login-note">Hanya <strong>@PeterGTPS</strong> yang bisa memposting script. Pengunjung lain cukup lihat, copy, download, dan kasih ★.</p>
       <label>
-        <span>Password owner</span>
-        <input name="password" type="password" required autocomplete="current-password" placeholder="••••••••" />
+        <span>Email admin Supabase</span>
+        <input name="email" type="email" required autocomplete="username" placeholder="admin@example.com" />
+      </label>
+      <label>
+        <span>Password</span>
+        <input name="password" type="password" required autocomplete="current-password" placeholder="Password akun Supabase" />
       </label>
       <div class="form-foot">
-        <span class="form-hint">Sesi tersimpan di browser ini ✿</span>
+        <span class="form-hint">Login diverifikasi oleh Supabase</span>
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" data-close-modal>Batal</button>
           <button type="submit" class="btn btn-primary">Masuk</button>
@@ -234,6 +238,9 @@
 <!-- Toast -->
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/supabase-config.js"></script>
+<script src="assets/supabase-adapter.js"></script>
 <script src="assets/config.js"></script>
 <script src="assets/scripts-data.js"></script>
 <script src="app.js"></script>
