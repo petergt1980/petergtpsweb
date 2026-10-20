@@ -132,7 +132,7 @@
       return `<div class="cart-row"><div class="cart-product"><strong>${escapeHtml(product.name)}</strong><small>${money(product.price)} × ${item.qty}</small></div><div class="cart-controls"><button class="btn btn-ghost sm" data-cart-minus="${escapeHtml(item.id)}">−</button><span>${item.qty}</span><button class="btn btn-ghost sm" data-cart-plus="${escapeHtml(item.id)}">+</button><button class="btn btn-danger-soft sm" data-cart-remove="${escapeHtml(item.id)}">Hapus</button></div><strong>${money(Number(product.price) * item.qty)}</strong></div>`;
     }).join('');
     const total = cart.reduce((sum, item) => { const p = getScript(item.id); return sum + (p ? Number(p.price || 0) * item.qty : 0); }, 0);
-    return `<section class="cart-page"><div class="page-head"><h1 class="page-title">Keranjang</h1><p class="page-sub">Review produk script Lua sebelum membuat pesanan.</p></div>${rows ? `<div class="panel cart-panel"><div class="panel-body">${rows}<div class="cart-total"><span>Total pesanan</span><strong>${money(total)}</strong></div><div class="row"><button class="btn btn-ghost" data-cart-clear>Kosongkan</button><button class="btn btn-primary" data-checkout>Buat pesanan</button></div><p class="form-hint">Checkout membuat pesan pesanan untuk dikirim ke penjual. Pembayaran dan pengiriman dikonfirmasi manual oleh penjual.</p></div></div>` : `<div class="empty-state"><span class="big">🛒</span><h3>Keranjang masih kosong</h3><p>Pilih script berlabel Produk untuk mulai membuat pesanan.</p><a class="btn btn-primary" href="#/">Jelajahi produk</a></div>`}</section>`;
+    return `<section class="cart-page"><div class="page-head"><h1 class="page-title">Keranjang</h1><p class="page-sub">Review produk script Lua sebelum membuat pesanan.</p></div>${rows ? `<div class="panel cart-panel"><div class="panel-body">${rows}<div class="cart-total"><span>Total pesanan</span><strong>${money(total)}</strong></div><div class="row"><button class="btn btn-ghost" data-cart-clear>Kosongkan</button><button class="btn btn-primary" data-checkout>Buat pesanan</button></div><p class="form-hint">Checkout akan membuka WhatsApp admin dengan rincian pesanan. Kirim pesan tersebut untuk melanjutkan pembelian; pembayaran dan pengiriman dikonfirmasi manual oleh penjual.</p></div></div>` : `<div class="empty-state"><span class="big">🛒</span><h3>Keranjang masih kosong</h3><p>Pilih script berlabel Produk untuk mulai membuat pesanan.</p><a class="btn btn-primary" href="#/">Jelajahi produk</a></div>`}</section>`;
   };
 
   /* ---------------- theme ---------------- */
@@ -319,7 +319,7 @@
         <div class="repo-foot">
           <span class="meta"><span class="lang-dot"></span>Lua</span>
           <span class="meta">★ ${starCount(script)}</span>
-          <span class="meta">${(script.lines || lineCount(script.code)).toLocaleString('id-ID')} baris</span>
+          <span class="meta">${(script.forSale && Number(script.price) > 0 ? (script.lines || 0) : (script.lines || lineCount(script.code))).toLocaleString('id-ID')} baris</span>
           <button class="star-btn${isStarred ? ' starred' : ''}" data-star="${escapeHtml(script.id)}" title="Beri bintang" aria-pressed="${isStarred}">
             <span class="star-glyph">${isStarred ? '★' : '☆'}</span> ${isStarred ? 'Starred' : 'Star'}
           </button>
@@ -360,6 +360,11 @@
       ${ownerPostButton()}
     </div>`;
 
+  const partnersHTML = () => {
+    const links = Array.isArray(CFG.partners) ? CFG.partners.filter((p) => p && /^https:\/\//i.test(String(p.url || ''))) : [];
+    return `<section class="partners-section panel"><div class="panel-body"><span class="eyebrow">COMMUNITY</span><h2 class="page-title" style="font-size:22px">Partner & Links</h2><p class="page-sub">Temukan komunitas dan kanal resmi yang terhubung dengan PeterGTPS.</p><div class="partner-grid">${links.length ? links.map((p) => `<a class="partner-card" href="${escapeHtml(p.url)}" target="_blank" rel="noopener noreferrer"><span class="partner-mark">↗</span><span><strong>${escapeHtml(p.name || 'Partner')}</strong><small>${escapeHtml(p.label || 'Kunjungi link')}</small></span><span class="partner-arrow">↗</span></a>`).join('') : '<p class="form-hint">Belum ada link partner. Tambahkan URL di assets/config.js.</p>'}</div></div></section>`;
+  };
+
   const homeHTML = () => {
     const list = filteredScripts();
     const tags = tagList();
@@ -391,7 +396,8 @@
           </select>
         </div>
       </div>
-      ${grid}`;
+      ${grid}
+      ${partnersHTML()}`;
   };
 
   const profileHTML = () => {
@@ -563,7 +569,9 @@
 
     const isStarred = starred.has(script.id);
     const tags = (script.tags || []).map((t) => `<span class="tag">#${escapeHtml(t)}</span>`).join('');
+    const isPaidProduct = Boolean(script.forSale && Number(script.price) > 0);
     const code = script.code || '';
+    const showCode = !isPaidProduct || isOwner || script.unlocked === true;
 
     return `
       <nav class="breadcrumb" aria-label="Breadcrumb">
@@ -580,8 +588,7 @@
           <div class="repo-tags" style="margin-top:8px">${tags}</div>
         </div>
         <div class="detail-actions">
-          <button class="btn btn-soft sm" data-copy="${escapeHtml(script.id)}">⧉ Copy</button>
-          <button class="btn btn-ghost sm" data-download="${escapeHtml(script.id)}">↓ Download .lua</button>
+          ${showCode ? `<button class="btn btn-soft sm" data-copy="${escapeHtml(script.id)}">⧉ Copy</button><button class="btn btn-ghost sm" data-download="${escapeHtml(script.id)}">↓ Download .lua</button>` : `<span class="badge">🔒 Kode terkunci</span>`}
           <button class="btn ${isStarred ? 'btn-primary' : 'btn-ghost'} sm" data-star="${escapeHtml(script.id)}">
             ${isStarred ? '★ Starred' : '☆ Star'} · ${starCount(script)}
           </button>
@@ -589,27 +596,15 @@
         </div>
       </div>
 
-      <div class="panel">
+      ${showCode ? `<div class="panel">
         <div class="panel-head">
           <span class="file-name">📄 ${escapeHtml(script.filename || 'script.lua')}</span>
           <span class="badge mint">Lua</span>
-          <div class="right">
-            <button class="btn btn-soft sm" data-copy="${escapeHtml(script.id)}">Copy kode</button>
-          </div>
+          <div class="right"><button class="btn btn-soft sm" data-copy="${escapeHtml(script.id)}">Copy kode</button></div>
         </div>
-        <div class="code-wrap">
-          <pre><code>${highlightLines(code)}</code></pre>
-        </div>
-        <div class="code-note">
-          <span>${(script.lines || lineCount(code)).toLocaleString('id-ID')} baris</span>
-          <span>·</span>
-          <span>${formatBytes(code)}</span>
-          <span>·</span>
-          <span>Diperbarui ${formatDate(script.updatedAt || script.createdAt)}</span>
-          <span>·</span>
-          <span>Script by ${escapeHtml(CFG.handle)}</span>
-        </div>
-      </div>
+        <div class="code-wrap"><pre><code>${highlightLines(code)}</code></pre></div>
+        <div class="code-note"><span>${(script.lines || lineCount(code)).toLocaleString('id-ID')} baris</span><span>·</span><span>${formatBytes(code)}</span><span>·</span><span>Diperbarui ${formatDate(script.updatedAt || script.createdAt)}</span><span>·</span><span>Script by ${escapeHtml(CFG.handle)}</span></div>
+      </div>` : `<div class="panel locked-product-panel"><div class="panel-body"><div class="locked-icon">🔒</div><h2>Script berbayar — kode disembunyikan</h2><p>Kode Lua tidak ditampilkan sebelum pesanan kamu dibayar dan akses diberikan oleh admin.</p><p class="form-hint">Setelah checkout, hubungi admin untuk konfirmasi pembayaran. Unduhan tersedia setelah pesanan ditandai lunas/selesai.</p><button class="btn btn-ghost" data-download-purchased="${escapeHtml(script.id)}">Cek akses & download</button></div></div>`}
 
       ${script.forSale && Number(script.price) > 0 ? `<div class="panel product-detail-buy"><div class="panel-body"><span class="product-label">PRODUK DIGITAL</span><h2>${money(script.price)}</h2><p>${escapeHtml(script.description || 'Script Lua digital dari PeterGTPS Store.')}</p><button class="btn btn-primary" data-add-cart="${escapeHtml(script.id)}">🛒 Tambah ke keranjang</button></div></div>` : ''}
       <div class="panel">
@@ -676,15 +671,57 @@
     const remove = event.target.closest('[data-cart-remove]'); if (remove) { cart=cart.filter(i=>i.id!==remove.dataset.cartRemove); syncCartToSupabase(); render(); return; }
     if (event.target.closest('[data-cart-clear]')) { cart=[]; syncCartToSupabase(); render(); return; }
     if (event.target.closest('[data-checkout]')) {
-      const lines = cart.map(i=>{const p=getScript(i.id); return p ? `- ${p.name} × ${i.qty}: ${money(Number(p.price)*i.qty)}` : '';}).filter(Boolean);
-      const total=cart.reduce((sum,i)=>{const p=getScript(i.id);return sum+(p?Number(p.price||0)*i.qty:0)},0);
-      const message=`Halo PeterGTPS, saya ingin memesan script:\n${lines.join('\n')}\nTotal: ${money(total)}\nMohon info pembayaran dan pengiriman.`;
-      copyText(message, 'Ringkasan pesanan disalin. Kirim ke penjual untuk konfirmasi.'); return;
+      const checkoutBtn = event.target.closest('[data-checkout]');
+      try {
+        if (!cart.length) throw new Error('Keranjang masih kosong.');
+        const customerName = window.prompt('Nama pemesan:');
+        if (!customerName || !customerName.trim()) throw new Error('Nama pemesan wajib diisi.');
+
+        const lines = cart.map((item) => {
+          const product = getScript(item.id);
+          if (!product) throw new Error('Salah satu produk tidak ditemukan. Muat ulang halaman dan coba lagi.');
+          return `• ${product.title || product.name || product.id} x${item.qty} — ${money(Number(product.price || 0) * item.qty)}`;
+        });
+        const total = cart.reduce((sum, item) => {
+          const product = getScript(item.id);
+          return sum + (product ? Number(product.price || 0) * item.qty : 0);
+        }, 0);
+        const message = [
+          'Halo PeterGTPS, saya ingin checkout script Lua:',
+          '',
+          `Nama: ${customerName.trim()}`,
+          ...lines,
+          '',
+          `Total: ${money(total)}`,
+          '',
+          'Mohon info pembayaran dan proses pengiriman. Terima kasih.'
+        ].join('\\n');
+        const url = `https://wa.me/6285604788705?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+        toast('WhatsApp dibuka. Tekan Kirim di WhatsApp untuk mengirim pesanan.');
+      } catch (error) {
+        toast(`Checkout gagal: ${error.message}`);
+      }
+      return;
     }
     const tagBtn = event.target.closest('[data-tag]');
     if (tagBtn) {
       state.tag = tagBtn.dataset.tag;
       render();
+      return;
+    }
+
+    const purchasedDownload = event.target.closest('[data-download-purchased]');
+    if (purchasedDownload) {
+      const originalText = purchasedDownload.textContent;
+      purchasedDownload.disabled = true; purchasedDownload.textContent = 'Memeriksa akses…';
+      try {
+        const file = await window.PeterStoreDB.getProductCode(purchasedDownload.dataset.downloadPurchased);
+        const product = getScript(purchasedDownload.dataset.downloadPurchased);
+        downloadFile(file.filename || product?.filename || 'script.lua', file.code);
+        toast('Akses tersedia — script berhasil diunduh.');
+      } catch (error) { toast(error.message || 'Akses belum tersedia.'); }
+      finally { purchasedDownload.disabled = false; purchasedDownload.textContent = originalText; }
       return;
     }
 
@@ -704,14 +741,14 @@
     const copyBtn = event.target.closest('[data-copy]');
     if (copyBtn) {
       const script = getScript(copyBtn.dataset.copy);
-      if (script) copyText(script.code);
+      if (script && (!(script.forSale && Number(script.price) > 0) || isOwner || script.unlocked === true)) copyText(script.code); else toast('Kode script berbayar terkunci sampai pesanan dikonfirmasi.');
       return;
     }
 
     const downloadBtn = event.target.closest('[data-download]');
     if (downloadBtn) {
       const script = getScript(downloadBtn.dataset.download);
-      if (script) downloadScript(script);
+      if (script && (!(script.forSale && Number(script.price) > 0) || isOwner || script.unlocked === true)) downloadScript(script); else toast('Kode script berbayar terkunci sampai pesanan dikonfirmasi.');
       return;
     }
 

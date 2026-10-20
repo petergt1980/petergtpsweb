@@ -97,3 +97,61 @@ create policy "admin update orders" on public.orders for update to authenticated
 -- After creating your account in Authentication > Users, run this with its real UUID:
 -- insert into public.user_roles(user_id, role) values ('YOUR-AUTH-USER-UUID', 'admin')
 -- on conflict(user_id) do update set role='admin';
+
+
+-- SECURITY PATCH: source Lua berbayar tidak boleh dibaca dari tabel katalog publik.
+-- Migrasikan kode lama ke tabel privat, lalu kosongkan kolom code lama.
+create table if not exists public.product_files (
+  product_id text primary key references public.products(id) on delete cascade,
+  filename text not null default 'script.lua',
+  code text not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.product_files enable row level security;
+
+-- Back up/move any previously stored source before clearing public column.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='products' and column_name='code'
+  ) then
+    execute $m$
+      insert into public.product_files(product_id, filename, code, updated_at)
+      select id, coalesce(filename, 'script.lua'), code, now()
+      from public.products
+      where coalesce(code, '') <> ''
+      on conflict (product_id) do update
+        set filename = excluded.filename, code = excluded.code, updated_at = now()
+    $m$;
+    execute $q$ update public.products set code = '' where code is not null and code <> '' $q$;
+  end if;
+end $$;
+
+drop policy if exists "admin manage product files" on public.product_files;
+create policy "admin manage product files" on public.product_files
+  for all to authenticated
+  using (public.is_store_admin())
+  with check (public.is_store_admin());
+
+drop policy if exists "buyers read purchased product files" on public.product_files;
+create policy "buyers read purchased product files" on public.product_files
+  for select to authenticated
+  using (
+    public.is_store_admin()
+    or exists (
+      select 1 from public.orders o
+      where o.user_id = (select auth.uid())
+        and o.status in ('paid', 'fulfilled')
+        and o.items @> jsonb_build_array(jsonb_build_object('product_id', product_files.product_id))
+    )
+  );
+
+-- Guest checkout stores contact details; buyer accounts remain optional.
+alter table public.orders alter column user_id drop not null;
+alter table public.orders add column if not exists customer_name text not null default '';
+alter table public.orders add column if not exists customer_whatsapp text not null default '';
+
+-- Do not allow anonymous clients to read or write private source code through direct table access.
+revoke all on table public.product_files from anon;
+grant select, insert, update, delete on table public.product_files to authenticated;

@@ -1,0 +1,4 @@
+[functions.create-order]
+# Checkout is available to guests; the function validates prices server-side and
+# uses only server-side secrets for order writes and WhatsApp notifications.
+verify_jwt = false

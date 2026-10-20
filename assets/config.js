@@ -16,5 +16,13 @@ window.PETER_CONFIG = {
      walau dibuka dari localhost / preview. */
   siteUrl: 'https://petergt1980.github.io/petergtpsweb/',
 
+  // Link partner/sosial yang tampil di bagian Partner & Links.
+  // Ganti URL contoh atau tambahkan link milik partner kamu.
+  partners: [
+    { name: 'GitHub', label: 'Website source', url: 'https://github.com/petergt1980/petergtpsweb' },
+    { name: 'WhatsApp', label: 'Kontak / order', url: '' }
+  ],
+  // Notifikasi WhatsApp dikirim melalui Supabase Edge Function.
+  // Nomor/token WhatsApp disimpan sebagai Supabase Secrets, bukan di file ini.
 
 };

@@ -1267,3 +1267,18 @@ input:focus,textarea:focus,select:focus { outline:none; border-color:#e11d48; bo
 .check-inline { display:flex; align-items:center; gap:8px; margin-top:10px; }
 .check-inline input { width:18px; height:18px; accent-color:var(--pink-500); }
 @media(max-width:720px) { .shop-strip { align-items:flex-start; flex-direction:column; padding:20px; } .cart-row { grid-template-columns:1fr; gap:10px; } .cart-controls { flex-wrap:wrap; } .topnav { flex-wrap:wrap; } }
+
+
+/* Partner links and paid-source lock */
+.partners-section { margin-top: 28px; }
+.partners-section .panel-body { padding: clamp(18px, 3vw, 28px); }
+.partner-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 18px; }
+.partner-card { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 15px; border: 1px solid var(--border, rgba(255,255,255,.1)); border-radius: 14px; background: var(--panel-2, rgba(255,255,255,.025)); color: var(--text, inherit); text-decoration: none; transition: transform .18s ease, border-color .18s ease; }
+.partner-card:hover { transform: translateY(-2px); border-color: var(--pink-600, #ef3340); }
+.partner-mark { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(239,51,64,.13); color: var(--pink-600, #ef3340); font-size: 22px; flex: 0 0 auto; }
+.partner-card strong, .partner-card small { display: block; }
+.partner-card small { margin-top: 3px; color: var(--text-soft, #999); font-size: 12px; }
+.partner-arrow { margin-left: auto; color: var(--text-soft, #999); }
+.locked-product-panel .panel-body { text-align: center; padding: 28px 18px; }
+.locked-icon { font-size: 34px; margin-bottom: 8px; }
+.locked-product-panel p { max-width: 620px; margin: 10px auto; }
