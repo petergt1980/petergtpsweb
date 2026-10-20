@@ -475,7 +475,7 @@
             <label><span>Partner & link (satu baris per partner: Nama | Label | URL https://...)</span><textarea id="settingPartners" rows="5" placeholder="Discord | Komunitas | https://discord.gg/INVITE
 YouTube | Tutorial | https://youtube.com/@channel">${escapeHtml((CFG.partners || []).map(p => `${p.name || ''} | ${p.label || ''} | ${p.url || ''}`).join('\n'))}</textarea></label>
             <div class="row"><button class="btn btn-primary sm" data-save-settings>Simpan pengaturan</button></div>
-            <p class="form-hint">Pengaturan disimpan ke Supabase; kolom partners_json perlu ditambahkan dengan SQL migrasi di folder supabase.</p>
+            <p class="form-hint">Partner ditampilkan untuk semua pengunjung setelah migrasi supabase/partners-migration.sql berhasil dijalankan. Gunakan satu partner per baris: Nama | Label | URL HTTPS.</p>
           </div>
         </section>` : ''}
 

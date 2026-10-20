@@ -1282,3 +1282,33 @@ input:focus,textarea:focus,select:focus { outline:none; border-color:#e11d48; bo
 .locked-product-panel .panel-body { text-align: center; padding: 28px 18px; }
 .locked-icon { font-size: 34px; margin-bottom: 8px; }
 .locked-product-panel p { max-width: 620px; margin: 10px auto; }
+
+/* ===== PeterGTPS Admin UI refresh: glass panels, cleaner partner settings, modern notices ===== */
+:root { --admin-glow: rgba(239,51,64,.18); }
+.owner-panel, .store-settings.panel { position:relative; overflow:hidden; border-radius:22px; border:1px solid rgba(239,51,64,.22); background:linear-gradient(145deg,rgba(22,23,31,.97),rgba(12,13,19,.96)); box-shadow:0 18px 55px rgba(0,0,0,.22); }
+.owner-panel { padding:clamp(18px,2.8vw,28px); }
+.owner-panel:before, .store-settings.panel:before { content:""; position:absolute; inset:0 0 auto; height:2px; background:linear-gradient(90deg,transparent,#ef3340,#ff7a86,transparent); opacity:.85; pointer-events:none; }
+.owner-panel h3 { display:flex; align-items:center; gap:10px; font-size:clamp(19px,2vw,24px); letter-spacing:-.035em; margin:0 0 9px; }
+.owner-panel > p { max-width:850px; line-height:1.7; color:var(--text-soft); }
+.admin-metrics { grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:12px; }
+.admin-metric { padding:18px; border-radius:17px; background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.018)); border-color:rgba(255,255,255,.085); transition:transform .18s,border-color .18s; }
+.admin-metric:hover { transform:translateY(-2px); border-color:rgba(239,51,64,.45); }
+.admin-metric strong { font-size:clamp(23px,2vw,30px); }
+.admin-sales-help { border-radius:17px; background:linear-gradient(120deg,rgba(239,51,64,.12),rgba(239,51,64,.035)); border-color:rgba(239,51,64,.24); }
+.store-settings.panel { margin-top:20px; }
+.store-settings .panel-head { padding:20px 24px; font-size:16px; font-weight:800; letter-spacing:-.02em; border-bottom:1px solid rgba(255,255,255,.07); background:rgba(255,255,255,.018); }
+.store-settings .panel-body { padding:clamp(18px,3vw,28px); display:grid; gap:16px; }
+.store-settings label { display:grid; gap:8px; color:var(--text-soft); font-size:12px; font-weight:700; }
+.store-settings input:not([type=color]):not([type=file]), .store-settings textarea { width:100%; border:1px solid rgba(255,255,255,.12); border-radius:13px; background:rgba(0,0,0,.22); color:var(--text); padding:12px 14px; outline:none; transition:border-color .18s,box-shadow .18s; }
+.store-settings input:focus, .store-settings textarea:focus { border-color:rgba(239,51,64,.7); box-shadow:0 0 0 3px rgba(239,51,64,.12); }
+.store-settings textarea { min-height:145px; resize:vertical; line-height:1.7; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:12px; }
+.store-settings input[type=color] { width:56px; height:42px; border:1px solid rgba(255,255,255,.14); border-radius:12px; padding:4px; background:rgba(0,0,0,.2); }
+.store-settings input[type=file] { max-width:100%; padding:10px; border:1px dashed rgba(255,255,255,.18); border-radius:12px; background:rgba(255,255,255,.025); color:var(--text-soft); }
+.store-settings [data-save-settings] { min-height:44px; padding:0 20px; border-radius:13px; box-shadow:0 8px 22px rgba(239,51,64,.17); }
+.partner-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr)); gap:14px; }
+.partner-card { padding:17px; min-height:82px; border-radius:18px; background:linear-gradient(135deg,rgba(255,255,255,.055),rgba(255,255,255,.018)); border-color:rgba(255,255,255,.085); }
+.partner-card:hover { box-shadow:0 12px 30px rgba(0,0,0,.2); }
+.partner-mark { width:44px; height:44px; border-radius:15px; background:linear-gradient(145deg,rgba(239,51,64,.24),rgba(239,51,64,.07)); border:1px solid rgba(239,51,64,.18); }
+.toast { left:auto; right:22px; bottom:22px; transform:translateY(12px) scale(.98); border:1px solid rgba(255,255,255,.12); border-radius:16px; background:rgba(19,20,28,.96); color:#fff; padding:15px 18px; text-align:left; box-shadow:0 18px 55px rgba(0,0,0,.42); backdrop-filter:blur(18px); font-weight:650; }
+.toast.show { transform:translateY(0) scale(1); }
+@media(max-width:650px) { .toast { left:14px; right:14px; bottom:14px; max-width:none; } .store-settings .form-row.two { grid-template-columns:1fr; } .owner-panel .row { gap:9px; } .owner-panel .row .btn { flex:1 1 100%; } }
