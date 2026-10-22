@@ -33,7 +33,9 @@
   let hiddenIds = new Set(readJSON(LS_HIDDEN, []));
   let starred = new Set(readJSON(LS_STARS, []));
   let isOwner = false;
-  let cart = []; // keranjang sementara di memori halaman; tidak memakai localStorage
+  const LS_GUEST_CART = 'peterstore.guestCart.v1';
+  const loadGuestCart = () => { try { const v = JSON.parse(localStorage.getItem(LS_GUEST_CART) || '[]'); return Array.isArray(v) ? v.filter(x => x && typeof x.id === 'string' && Number.isInteger(x.qty) && x.qty > 0 && x.qty <= 99) : []; } catch { return []; } };
+  let cart = loadGuestCart(); // guest cart tersimpan lokal; bisa dipindahkan via link/kode
 
   /* Gabungkan script publik (dari repo) dengan postingan lokal.
      Kalau id-nya sama, versi lokal yang dipakai supaya owner langsung
@@ -117,7 +119,31 @@
     const badge = document.getElementById('cartCount');
     if (badge) badge.textContent = String(cart.reduce((sum, item) => sum + item.qty, 0));
   };
-  const syncCartToSupabase = async () => { try { if (window.PeterStoreDB?.client) { const {data:{user}} = await window.PeterStoreDB.client.auth.getUser(); if (user) await window.PeterStoreDB.setCart(cart); } } catch (e) { console.warn('Keranjang belum tersinkron:', e.message); toast('Keranjang belum tersinkron. Pastikan login dengan akun yang sama di semua perangkat.'); } };
+  const syncCartToSupabase = async () => {
+    try { localStorage.setItem(LS_GUEST_CART, JSON.stringify(cart)); } catch (e) { console.warn('Tidak dapat menyimpan keranjang lokal:', e); }
+    try { if (window.PeterStoreDB?.client) { const {data:{user}} = await window.PeterStoreDB.client.auth.getUser(); if (user) await window.PeterStoreDB.setCart(cart); } } catch (e) { console.warn('Keranjang akun belum tersinkron:', e.message); }
+  };
+  const encodeCart = (items) => btoa(unescape(encodeURIComponent(JSON.stringify(items)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  const decodeCart = (token) => JSON.parse(decodeURIComponent(escape(atob(token.replace(/-/g,'+').replace(/_/g,'/')))));
+  const shareCart = async () => {
+    if (!cart.length) return toast('Keranjang masih kosong.');
+    const url = new URL(location.href); url.hash = '/cart'; url.searchParams.set('cart', encodeCart(cart));
+    try { await navigator.clipboard.writeText(url.toString()); toast('Link keranjang disalin. Buka link ini di perangkat lain.'); }
+    catch { window.prompt('Salin link keranjang ini:', url.toString()); }
+  };
+  // Impor keranjang dari tautan yang dibagikan, tanpa akun pelanggan.
+  (() => {
+    const params = new URLSearchParams(location.search); const token = params.get('cart');
+    if (!token) return;
+    try {
+      const imported = decodeCart(token);
+      if (!Array.isArray(imported) || imported.length > 100) throw new Error('format tidak valid');
+      cart = imported.filter(x => x && typeof x.id === 'string' && Number.isInteger(x.qty) && x.qty > 0 && x.qty <= 99 && getScript(x.id)?.forSale).map(x => ({id:x.id, qty:x.qty}));
+      localStorage.setItem(LS_GUEST_CART, JSON.stringify(cart));
+      params.delete('cart'); const clean = location.pathname + (params.toString() ? '?' + params.toString() : '') + location.hash;
+      history.replaceState(null, '', clean);
+    } catch (e) { console.warn('Link keranjang tidak valid:', e); }
+  })();
 
   const addToCart = async (id) => {
     const product = getScript(id);
@@ -132,7 +158,7 @@
       return `<div class="cart-row"><div class="cart-product"><strong>${escapeHtml(product.name)}</strong><small>${money(product.price)} × ${item.qty}</small></div><div class="cart-controls"><button class="btn btn-ghost sm" data-cart-minus="${escapeHtml(item.id)}">−</button><span>${item.qty}</span><button class="btn btn-ghost sm" data-cart-plus="${escapeHtml(item.id)}">+</button><button class="btn btn-danger-soft sm" data-cart-remove="${escapeHtml(item.id)}">Hapus</button></div><strong>${money(Number(product.price) * item.qty)}</strong></div>`;
     }).join('');
     const total = cart.reduce((sum, item) => { const p = getScript(item.id); return sum + (p ? Number(p.price || 0) * item.qty : 0); }, 0);
-    return `<section class="cart-page"><div class="page-head"><h1 class="page-title">Keranjang</h1><p class="page-sub">Review produk script Lua sebelum membuat pesanan.</p></div>${rows ? `<div class="panel cart-panel"><div class="panel-body">${rows}<div class="cart-total"><span>Total pesanan</span><strong>${money(total)}</strong></div><div class="row"><button class="btn btn-ghost" data-cart-clear>Kosongkan</button><button class="btn btn-primary" data-checkout>Buat pesanan</button></div><p class="form-hint">Checkout akan membuka WhatsApp admin dengan rincian pesanan. Kirim pesan tersebut untuk melanjutkan pembelian; pembayaran dan pengiriman dikonfirmasi manual oleh penjual.</p></div></div>` : `<div class="empty-state"><span class="big">🛒</span><h3>Keranjang masih kosong</h3><p>Pilih script berlabel Produk untuk mulai membuat pesanan.</p><a class="btn btn-primary" href="#/">Jelajahi produk</a></div>`}</section>`;
+    return `<section class="cart-page"><div class="page-head"><h1 class="page-title">Keranjang</h1><p class="page-sub">Review produk script Lua sebelum membuat pesanan.</p></div>${rows ? `<div class="panel cart-panel"><div class="panel-body">${rows}<div class="cart-total"><span>Total pesanan</span><strong>${money(total)}</strong></div><div class="row"><button class="btn btn-ghost" data-cart-share>Bagikan keranjang</button><button class="btn btn-ghost" data-cart-clear>Kosongkan</button><button class="btn btn-primary" data-checkout>Buat pesanan</button></div><p class="form-hint">Checkout akan membuka WhatsApp admin dengan rincian pesanan. Kirim pesan tersebut untuk melanjutkan pembelian; pembayaran dan pengiriman dikonfirmasi manual oleh penjual.</p></div></div>` : `<div class="empty-state"><span class="big">🛒</span><h3>Keranjang masih kosong</h3><p>Pilih script berlabel Produk untuk mulai membuat pesanan.</p><a class="btn btn-primary" href="#/">Jelajahi produk</a></div>`}</section>`;
   };
 
   /* ---------------- theme ---------------- */
@@ -236,7 +262,7 @@
         <button class="btn btn-primary" id="newPostBtn"><span class="plus">+</span> Posting Script</button>`;
     } else {
       authArea.innerHTML = `
-        <button class="btn btn-ghost" data-login>${window.PeterStoreDB?.client ? 'Login akun / keranjang' : 'Login akun'}</button>`;
+        <button class="btn btn-ghost" data-login>${window.PeterStoreDB?.client ? 'Admin Login' : 'Login akun'}</button>`;
     }
   };
 
@@ -673,6 +699,7 @@ YouTube | Tutorial | https://youtube.com/@channel">${escapeHtml((CFG.partners ||
     const plus = event.target.closest('[data-cart-plus]'); if (plus) { const x=cart.find(i=>i.id===plus.dataset.cartPlus); if(x)x.qty++; syncCartToSupabase(); render(); return; }
     const minus = event.target.closest('[data-cart-minus]'); if (minus) { const x=cart.find(i=>i.id===minus.dataset.cartMinus); if(x)x.qty--; cart=cart.filter(i=>i.qty>0); syncCartToSupabase(); render(); return; }
     const remove = event.target.closest('[data-cart-remove]'); if (remove) { cart=cart.filter(i=>i.id!==remove.dataset.cartRemove); syncCartToSupabase(); render(); return; }
+    if (event.target.closest('[data-cart-share]')) { await shareCart(); return; }
     if (event.target.closest('[data-cart-clear]')) { cart=[]; syncCartToSupabase(); render(); return; }
     if (event.target.closest('[data-checkout]')) {
       const checkoutBtn = event.target.closest('[data-checkout]');
@@ -927,8 +954,8 @@ YouTube | Tutorial | https://youtube.com/@channel">${escapeHtml((CFG.partners ||
     try {
       if (!window.PeterStoreDB?.ready) return;
       isOwner = await window.PeterStoreDB.isAdmin();
-      const savedCart = await window.PeterStoreDB.getCart();
-      cart = savedCart;
+      const {data:{user}} = await window.PeterStoreDB.client.auth.getUser();
+      if (user) { const savedCart = await window.PeterStoreDB.getCart(); cart = savedCart.length ? savedCart : loadGuestCart(); await syncCartToSupabase(); }
       render();
     } catch (err) { console.warn('Supabase session/cart:', err.message); }
   })();
