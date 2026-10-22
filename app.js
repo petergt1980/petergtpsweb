@@ -117,14 +117,14 @@
     const badge = document.getElementById('cartCount');
     if (badge) badge.textContent = String(cart.reduce((sum, item) => sum + item.qty, 0));
   };
-  const syncCartToSupabase = async () => { try { if (window.PeterStoreDB?.client) { const {data:{user}} = await window.PeterStoreDB.client.auth.getUser(); if (user) await window.PeterStoreDB.setCart(cart); } } catch (e) { console.warn('Keranjang belum tersinkron:', e.message); } };
+  const syncCartToSupabase = async () => { try { if (window.PeterStoreDB?.client) { const {data:{user}} = await window.PeterStoreDB.client.auth.getUser(); if (user) await window.PeterStoreDB.setCart(cart); } } catch (e) { console.warn('Keranjang belum tersinkron:', e.message); toast('Keranjang belum tersinkron. Pastikan login dengan akun yang sama di semua perangkat.'); } };
 
-  const addToCart = (id) => {
+  const addToCart = async (id) => {
     const product = getScript(id);
     if (!product || !product.forSale || Number(product.price) <= 0) return toast('Produk ini belum diaktifkan untuk dijual');
     const found = cart.find((item) => item.id === id);
     if (found) found.qty += 1; else cart.push({ id, qty: 1 });
-    updateCartBadge(); toast(`${product.name} ditambahkan ke keranjang`);
+    updateCartBadge(); await syncCartToSupabase(); toast(`${product.name} ditambahkan ke keranjang`);
   };
   const cartHTML = () => {
     const rows = cart.map((item) => {
@@ -236,7 +236,7 @@
         <button class="btn btn-primary" id="newPostBtn"><span class="plus">+</span> Posting Script</button>`;
     } else {
       authArea.innerHTML = `
-        <button class="btn btn-ghost" data-login>Login owner</button>`;
+        <button class="btn btn-ghost" data-login>${window.PeterStoreDB?.client ? 'Login akun / keranjang' : 'Login akun'}</button>`;
     }
   };
 
@@ -669,7 +669,7 @@ YouTube | Tutorial | https://youtube.com/@channel">${escapeHtml((CFG.partners ||
   /* ---------------- delegated events ---------------- */
   app.addEventListener('click', async (event) => {
     const addCartBtn = event.target.closest('[data-add-cart]');
-    if (addCartBtn) { event.preventDefault(); event.stopPropagation(); addToCart(addCartBtn.dataset.addCart); return; }
+    if (addCartBtn) { event.preventDefault(); event.stopPropagation(); await addToCart(addCartBtn.dataset.addCart); return; }
     const plus = event.target.closest('[data-cart-plus]'); if (plus) { const x=cart.find(i=>i.id===plus.dataset.cartPlus); if(x)x.qty++; syncCartToSupabase(); render(); return; }
     const minus = event.target.closest('[data-cart-minus]'); if (minus) { const x=cart.find(i=>i.id===minus.dataset.cartMinus); if(x)x.qty--; cart=cart.filter(i=>i.qty>0); syncCartToSupabase(); render(); return; }
     const remove = event.target.closest('[data-cart-remove]'); if (remove) { cart=cart.filter(i=>i.id!==remove.dataset.cartRemove); syncCartToSupabase(); render(); return; }
@@ -914,10 +914,11 @@ YouTube | Tutorial | https://youtube.com/@channel">${escapeHtml((CFG.partners ||
       if (!window.PeterStoreDB?.ready) throw new Error('Isi URL dan publishable/anon key Supabase di assets/supabase-config.js terlebih dahulu.');
       await window.PeterStoreDB.signIn(email, password);
       const admin = await window.PeterStoreDB.isAdmin();
-      if (!admin) { await window.PeterStoreDB.signOut(); throw new Error('Akun ini belum diberi role admin di tabel user_roles.'); }
-      isOwner = true;
+      isOwner = admin;
+      const savedCart = await window.PeterStoreDB.getCart();
+      cart = savedCart;
       loginForm.reset(); closeModal(loginModal);
-      toast(`Selamat datang, ${CFG.owner}!`); render();
+      toast(admin ? `Selamat datang, ${CFG.owner}!` : 'Login berhasil. Keranjang akan tersinkron di perangkat dengan akun yang sama.'); render();
     } catch (err) { toast(err?.message || 'Login Supabase gagal.'); }
   });
 
@@ -927,7 +928,7 @@ YouTube | Tutorial | https://youtube.com/@channel">${escapeHtml((CFG.partners ||
       if (!window.PeterStoreDB?.ready) return;
       isOwner = await window.PeterStoreDB.isAdmin();
       const savedCart = await window.PeterStoreDB.getCart();
-      if (savedCart.length) cart = savedCart;
+      cart = savedCart;
       render();
     } catch (err) { console.warn('Supabase session/cart:', err.message); }
   })();
