@@ -31,7 +31,10 @@
   }
   window.PeterStoreDB = {
     ready, client,
+    async getSession() { if (!client) return null; const { data, error } = await client.auth.getSession(); fail(error); return data.session; },
     async signIn(email, password) { if (!client) throw new Error('Konfigurasi Supabase belum diisi.'); const { data, error } = await client.auth.signInWithPassword({ email, password }); fail(error); return data; },
+    async signUp(email, password) { if (!client) throw new Error('Konfigurasi Supabase belum diisi.'); const { data, error } = await client.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } }); fail(error); return data; },
+    async signInWithProvider(provider) { if (!client) throw new Error('Konfigurasi Supabase belum diisi.'); const allowed = ['google','facebook','github']; if (!allowed.includes(provider)) throw new Error('Provider login tidak dikenal.'); const { data, error } = await client.auth.signInWithOAuth({ provider, options: { redirectTo: location.origin + location.pathname } }); fail(error); return data; },
     async signOut() { if (client) { const { error } = await client.auth.signOut(); fail(error); } },
     async isAdmin() { if (!client) return false; return isAdmin(); },
     async getProducts() {

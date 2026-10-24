@@ -128,11 +128,11 @@
     lastLocalCartEditAt = Date.now();
     try { localStorage.setItem(LS_GUEST_CART, JSON.stringify(cart)); } catch (e) { console.warn('Tidak dapat menyimpan keranjang lokal:', e); }
     try {
-      if (window.PeterStoreDB?.client && guestCartToken) {
-        await window.PeterStoreDB.saveGuestCart(guestCartToken, cart);
+      if (window.PeterStoreDB?.client && await window.PeterStoreDB.getSession()) {
+        await window.PeterStoreDB.setCart(cart);
         lastRemoteCartSignature = JSON.stringify(cart);
       }
-    } catch (e) { console.warn('Keranjang tamu belum tersinkron ke Supabase:', e.message); }
+    } catch (e) { console.warn('Keranjang belum tersinkron ke Supabase:', e.message); toast('Keranjang belum tersinkron: ' + (e.message || 'periksa migrasi Supabase')); }
     updateCartBadge();
   };
   const shareCart = async () => {
@@ -189,6 +189,35 @@
         }, 5000);
       }
     } catch (e) { console.warn('Auto Cart Sync:', e.message); toast('Sinkronisasi keranjang gagal. Periksa migrasi Supabase.'); }
+  };
+
+  let accountCartPollStarted = false;
+  const initAccountCartSync = async () => {
+    if (!window.PeterStoreDB?.ready) return;
+    const session = await window.PeterStoreDB.getSession();
+    if (!session) return;
+    try {
+      const remote = await window.PeterStoreDB.getCart();
+      cart = remote.filter(x => x && typeof x.id === 'string' && Number.isInteger(x.qty) && x.qty > 0 && x.qty <= 99 && getScript(x.id)?.forSale).map(x => ({ id: x.id, qty: x.qty }));
+      localStorage.setItem(LS_GUEST_CART, JSON.stringify(cart));
+      lastRemoteCartSignature = JSON.stringify(cart);
+      updateCartBadge();
+      if (!accountCartPollStarted) {
+        accountCartPollStarted = true;
+        setInterval(async () => {
+          try {
+            if (Date.now() - lastLocalCartEditAt < 2500 || !(await window.PeterStoreDB.getSession())) return;
+            const latest = await window.PeterStoreDB.getCart();
+            const next = latest.filter(x => x && typeof x.id === 'string' && Number.isInteger(x.qty) && x.qty > 0 && x.qty <= 99 && getScript(x.id)?.forSale).map(x => ({ id: x.id, qty: x.qty }));
+            const signature = JSON.stringify(next);
+            if (signature !== lastRemoteCartSignature) {
+              cart = next; lastRemoteCartSignature = signature;
+              localStorage.setItem(LS_GUEST_CART, signature); updateCartBadge(); render();
+            }
+          } catch (e) { console.warn('Polling akun keranjang:', e.message); }
+        }, 5000);
+      }
+    } catch (e) { console.warn('Gagal memuat keranjang akun:', e.message); toast('Keranjang akun gagal dimuat. Pastikan cart-sync-migration.sql sudah dijalankan.'); }
   };
 
   const addToCart = async (id) => {
@@ -296,6 +325,23 @@
   /* ---------------- state ---------------- */
   const state = { query: '', tag: 'all', sort: 'featured' };
 
+  let authMode = 'login';
+  let authUnlocked = false;
+  const setAuthMode = (mode) => {
+    authMode = mode === 'register' ? 'register' : 'login';
+    document.querySelectorAll('[data-auth-mode]').forEach(btn => btn.classList.toggle('active', btn.dataset.authMode === authMode));
+    document.getElementById('loginTitle').innerHTML = (authMode === 'register' ? 'Buat akun' : 'Selamat datang') + ' <span class="spark">✦</span>';
+    document.getElementById('authSubmit').textContent = authMode === 'register' ? 'Daftar' : 'Masuk';
+    document.getElementById('authFeedback').textContent = authMode === 'register' ? 'Jika konfirmasi email aktif, buka emailmu untuk memverifikasi akun sebelum login.' : 'Login untuk membuka website dan menyinkronkan keranjang di semua perangkat.';
+  };
+  const enforceAuthGate = (signedIn) => {
+    authUnlocked = !!signedIn;
+    loginModal.hidden = authUnlocked;
+    document.body.classList.toggle('auth-required', !authUnlocked);
+    if (!authUnlocked) { document.body.style.overflow = 'hidden'; }
+    else { document.body.style.overflow = ''; }
+  };
+
   /* ---------------- auth UI ---------------- */
   const renderAuthArea = () => {
     updateCartBadge();
@@ -307,8 +353,9 @@
         </span>
         <button class="btn btn-primary" id="newPostBtn"><span class="plus">+</span> Posting Script</button>`;
     } else {
-      authArea.innerHTML = `
-        <button class="btn btn-ghost" data-login>${window.PeterStoreDB?.client ? 'Login akun / keranjang' : 'Login akun'}</button>`;
+      authArea.innerHTML = authUnlocked ? `
+        <span class="owner-chip"><span class="mini-avatar">✓</span> Akun pelanggan <button type="button" data-logout>keluar</button></span>` : `
+        <button class="btn btn-ghost" data-login>Login / Register</button>`;
     }
   };
 
@@ -317,12 +364,14 @@
     document.body.style.overflow = 'hidden';
   };
   const closeModal = (modal) => {
+    if (modal === loginModal && !authUnlocked) return;
     modal.hidden = true;
-    document.body.style.overflow = '';
+    if (modal !== loginModal || authUnlocked) document.body.style.overflow = '';
   };
   const closeAllModals = () => {
-    [postModal, loginModal, shareModal, publishModal].forEach((m) => { if (m) m.hidden = true; });
-    document.body.style.overflow = '';
+    [postModal, shareModal, publishModal].forEach((m) => { if (m) m.hidden = true; });
+    if (authUnlocked) loginModal.hidden = true;
+    document.body.style.overflow = authUnlocked ? '' : 'hidden';
   };
 
   const requireOwner = (action) => {
@@ -953,6 +1002,17 @@ YouTube | Tutorial | https://youtube.com/@channel">${escapeHtml((CFG.partners ||
   });
 
   /* ---------------- topbar auth actions ---------------- */
+  document.addEventListener('click', async (event) => {
+    const modeBtn = event.target.closest('[data-auth-mode]');
+    if (modeBtn) { setAuthMode(modeBtn.dataset.authMode); return; }
+    const oauthBtn = event.target.closest('[data-oauth]');
+    if (oauthBtn) {
+      try { if (!window.PeterStoreDB?.ready) throw new Error('Konfigurasi Supabase belum siap.'); oauthBtn.disabled = true; await window.PeterStoreDB.signInWithProvider(oauthBtn.dataset.oauth); }
+      catch (err) { toast(err?.message || 'Login sosial gagal.'); oauthBtn.disabled = false; }
+      return;
+    }
+  });
+
   authArea.addEventListener('click', (event) => {
     if (event.target.closest('[data-login]')) {
       openModal(loginModal);
@@ -960,11 +1020,8 @@ YouTube | Tutorial | https://youtube.com/@channel">${escapeHtml((CFG.partners ||
       return;
     }
     if (event.target.closest('[data-logout]')) {
-      window.PeterStoreDB?.signOut().catch((error) => console.warn('Logout:', error.message));
-      isOwner = false;
-      writeJSON(LS_AUTH, false);
-      toast('Kamu sudah keluar dari mode owner');
-      render();
+      (async () => { try { await window.PeterStoreDB?.signOut(); } catch (error) { console.warn('Logout:', error.message); } isOwner = false; enforceAuthGate(false); setAuthMode('login'); renderAuthArea(); render(); })();
+      toast('Kamu sudah keluar dari akun');
       return;
     }
     if (event.target.closest('#newPostBtn')) {
@@ -983,24 +1040,41 @@ YouTube | Tutorial | https://youtube.com/@channel">${escapeHtml((CFG.partners ||
     const formData = new FormData(loginForm);
     const email = String(formData.get('email') || '').trim();
     const password = String(formData.get('password') || '');
+    const submit = document.getElementById('authSubmit');
     try {
       if (!window.PeterStoreDB?.ready) throw new Error('Isi URL dan publishable/anon key Supabase di assets/supabase-config.js terlebih dahulu.');
-      await window.PeterStoreDB.signIn(email, password);
-      const admin = await window.PeterStoreDB.isAdmin();
-      isOwner = admin;
-      const savedCart = await window.PeterStoreDB.getCart();
-      cart = savedCart;
-      loginForm.reset(); closeModal(loginModal);
-      toast(admin ? `Selamat datang, ${CFG.owner}!` : 'Login berhasil. Keranjang akan tersinkron di perangkat dengan akun yang sama.'); render();
-    } catch (err) { toast(err?.message || 'Login Supabase gagal.'); }
+      submit.disabled = true;
+      if (authMode === 'register') {
+        const result = await window.PeterStoreDB.signUp(email, password);
+        if (!result.session) { document.getElementById('authFeedback').textContent = 'Akun berhasil dibuat. Cek email untuk verifikasi, lalu login.'; toast('Pendaftaran berhasil. Periksa email untuk verifikasi.'); return; }
+      } else {
+        await window.PeterStoreDB.signIn(email, password);
+      }
+      const session = await window.PeterStoreDB.getSession();
+      if (!session) { toast('Silakan verifikasi email lalu login.'); return; }
+      isOwner = await window.PeterStoreDB.isAdmin();
+      await initAccountCartSync();
+      enforceAuthGate(true);
+      loginForm.reset();
+      toast(authMode === 'register' ? 'Akun berhasil dibuat!' : 'Login berhasil!');
+      renderAuthArea(); render();
+    } catch (err) { toast(err?.message || 'Autentikasi Supabase gagal.'); }
+    finally { submit.disabled = false; }
   });
 
-  // Restore admin session separately; guest cart sync never requires customer login.
+  // Auth is required before the store is accessible. OAuth callback sessions are restored here too.
   (async () => {
-    try { if (window.PeterStoreDB?.ready) isOwner = await window.PeterStoreDB.isAdmin(); }
-    catch (err) { console.warn('Supabase admin session:', err.message); }
-    await initGuestCartSync();
-    render();
+    try {
+      const session = await window.PeterStoreDB?.getSession();
+      enforceAuthGate(!!session);
+      if (session) {
+        isOwner = await window.PeterStoreDB.isAdmin();
+        await initAccountCartSync();
+      } else {
+        setAuthMode('login');
+      }
+    } catch (err) { console.warn('Supabase session:', err.message); enforceAuthGate(false); }
+    renderAuthArea(); render();
   })();
 
   /* ---------------- post form ---------------- */

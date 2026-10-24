@@ -148,31 +148,27 @@
   </div>
 </div>
 
-<!-- Modal: login owner -->
-<div id="loginModal" class="modal" hidden>
-  <div class="modal-backdrop" data-close-modal></div>
-  <div class="modal-card narrow" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+<!-- Modal: login/register wajib sebelum masuk website -->
+<div id="loginModal" class="modal auth-gate" hidden>
+  <div class="modal-backdrop auth-gate-backdrop"></div>
+  <div class="modal-card narrow auth-gate-card" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+    <div class="auth-brand"><img src="assets/petergtps.png" alt="PeterGTPS"><div><strong>PeterGTPS STORE</strong><span>Login untuk melanjutkan</span></div></div>
     <div class="modal-head">
-      <h2 id="loginTitle">Login Akun <span class="spark">✦</span></h2>
-      <button class="icon-btn" data-close-modal aria-label="Tutup">✕</button>
+      <h2 id="loginTitle">Selamat datang <span class="spark">✦</span></h2>
     </div>
+    <p class="login-note">Masuk atau daftar untuk membuka website. Keranjang akan tersimpan ke akunmu dan otomatis tersinkron di perangkat lain.</p>
+    <div class="auth-tabs"><button type="button" class="auth-tab active" data-auth-mode="login">Login</button><button type="button" class="auth-tab" data-auth-mode="register">Register</button></div>
+    <div class="auth-providers">
+      <button type="button" class="btn btn-ghost auth-provider" data-oauth="google"><span class="provider-mark google-mark">G</span> Lanjutkan dengan Google</button>
+      <button type="button" class="btn btn-ghost auth-provider" data-oauth="facebook"><span class="provider-mark facebook-mark">f</span> Lanjutkan dengan Facebook</button>
+      <button type="button" class="btn btn-ghost auth-provider" data-oauth="github"><span class="provider-mark github-mark">●</span> Lanjutkan dengan GitHub</button>
+    </div>
+    <div class="auth-divider"><span>atau gunakan email</span></div>
     <form id="loginForm" class="post-form">
-      <p class="login-note">Login ini juga dipakai untuk menyinkronkan keranjang antarperangkat. Hanya akun dengan role admin yang bisa memposting script; akun pelanggan biasa tetap bisa menyimpan keranjang.</p>
-      <label>
-        <span>Email admin Supabase</span>
-        <input name="email" type="email" required autocomplete="username" placeholder="admin@example.com" />
-      </label>
-      <label>
-        <span>Password</span>
-        <input name="password" type="password" required autocomplete="current-password" placeholder="Password akun Supabase" />
-      </label>
-      <div class="form-foot">
-        <span class="form-hint">Login diverifikasi oleh Supabase</span>
-        <div class="form-actions">
-          <button type="button" class="btn btn-ghost" data-close-modal>Batal</button>
-          <button type="submit" class="btn btn-primary">Masuk</button>
-        </div>
-      </div>
+      <label><span>Email</span><input name="email" type="email" required autocomplete="email" placeholder="nama@email.com" /></label>
+      <label><span>Password</span><input name="password" type="password" required minlength="6" autocomplete="current-password" placeholder="Minimal 6 karakter" /></label>
+      <button type="submit" class="btn btn-primary auth-submit" id="authSubmit">Masuk</button>
+      <p class="form-hint auth-feedback" id="authFeedback" aria-live="polite">Dengan melanjutkan, kamu menyetujui penggunaan akun untuk menyimpan keranjang.</p>
     </form>
   </div>
 </div>
