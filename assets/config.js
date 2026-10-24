@@ -20,7 +20,7 @@ window.PETER_CONFIG = {
   // Ganti URL contoh atau tambahkan link milik partner kamu.
   partners: [
     { name: 'GitHub', label: 'Website source', url: 'https://github.com/petergt1980/petergtpsweb' },
-    { name: 'WhatsApp', label: 'Kontak / order', url: '' }
+    { name: 'WhatsApp', label: 'Kontak / order', url: 'https://wa.me/085604788705' }
   ],
   // Notifikasi WhatsApp dikirim melalui Supabase Edge Function.
   // Nomor/token WhatsApp disimpan sebagai Supabase Secrets, bukan di file ini.

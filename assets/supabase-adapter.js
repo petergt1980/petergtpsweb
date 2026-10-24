@@ -87,6 +87,16 @@
       if (!(await isAdmin())) throw new Error('Hanya admin yang boleh menghapus produk.');
       const { error } = await client.from('products').delete().eq('id', String(id)); fail(error);
     },
+    async loadGuestCart(token) {
+      if (!client) throw new Error('Supabase belum dikonfigurasi.');
+      const { data, error } = await client.rpc('guest_cart_load', { p_token: String(token) }); fail(error);
+      return data?.items ?? null;
+    },
+    async saveGuestCart(token, items) {
+      if (!client) throw new Error('Supabase belum dikonfigurasi.');
+      const safeItems = (Array.isArray(items) ? items : []).slice(0, 100).map(x => ({ id: String(x.id), qty: Math.max(1, Math.min(99, Number(x.qty) || 1)) }));
+      const { error } = await client.rpc('guest_cart_save', { p_token: String(token), p_items: safeItems }); fail(error);
+    },
     async getCart() {
       if (!client) return [];
       const user = await getUser(); if (!user) return [];

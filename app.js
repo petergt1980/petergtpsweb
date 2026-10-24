@@ -34,6 +34,8 @@
   let starred = new Set(readJSON(LS_STARS, []));
   let isOwner = false;
   const LS_GUEST_CART = 'peterstore.guestCart.v1';
+  const LS_GUEST_CART_TOKEN = 'peterstore.guestCartToken.v1';
+  const randomCartToken = () => { const b = new Uint8Array(32); crypto.getRandomValues(b); return Array.from(b, x => x.toString(16).padStart(2, '0')).join(''); };
   const loadGuestCart = () => { try { const v = JSON.parse(localStorage.getItem(LS_GUEST_CART) || '[]'); return Array.isArray(v) ? v.filter(x => x && typeof x.id === 'string' && Number.isInteger(x.qty) && x.qty > 0 && x.qty <= 99) : []; } catch { return []; } };
   let cart = loadGuestCart(); // guest cart tersimpan lokal; bisa dipindahkan via link/kode
 
@@ -119,31 +121,75 @@
     const badge = document.getElementById('cartCount');
     if (badge) badge.textContent = String(cart.reduce((sum, item) => sum + item.qty, 0));
   };
+  let guestCartToken = '';
+  let lastRemoteCartSignature = '';
+  let lastLocalCartEditAt = 0;
   const syncCartToSupabase = async () => {
+    lastLocalCartEditAt = Date.now();
     try { localStorage.setItem(LS_GUEST_CART, JSON.stringify(cart)); } catch (e) { console.warn('Tidak dapat menyimpan keranjang lokal:', e); }
-    try { if (window.PeterStoreDB?.client) { const {data:{user}} = await window.PeterStoreDB.client.auth.getUser(); if (user) await window.PeterStoreDB.setCart(cart); } } catch (e) { console.warn('Keranjang akun belum tersinkron:', e.message); }
+    try {
+      if (window.PeterStoreDB?.client && guestCartToken) {
+        await window.PeterStoreDB.saveGuestCart(guestCartToken, cart);
+        lastRemoteCartSignature = JSON.stringify(cart);
+      }
+    } catch (e) { console.warn('Keranjang tamu belum tersinkron ke Supabase:', e.message); }
+    updateCartBadge();
   };
-  const encodeCart = (items) => btoa(unescape(encodeURIComponent(JSON.stringify(items)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-  const decodeCart = (token) => JSON.parse(decodeURIComponent(escape(atob(token.replace(/-/g,'+').replace(/_/g,'/')))));
   const shareCart = async () => {
     if (!cart.length) return toast('Keranjang masih kosong.');
-    const url = new URL(location.href); url.hash = '/cart'; url.searchParams.set('cart', encodeCart(cart));
-    try { await navigator.clipboard.writeText(url.toString()); toast('Link keranjang disalin. Buka link ini di perangkat lain.'); }
-    catch { window.prompt('Salin link keranjang ini:', url.toString()); }
-  };
-  // Impor keranjang dari tautan yang dibagikan, tanpa akun pelanggan.
-  (() => {
-    const params = new URLSearchParams(location.search); const token = params.get('cart');
-    if (!token) return;
+    if (!guestCartToken) guestCartToken = randomCartToken();
+    try { localStorage.setItem(LS_GUEST_CART_TOKEN, guestCartToken); } catch {}
     try {
-      const imported = decodeCart(token);
-      if (!Array.isArray(imported) || imported.length > 100) throw new Error('format tidak valid');
-      cart = imported.filter(x => x && typeof x.id === 'string' && Number.isInteger(x.qty) && x.qty > 0 && x.qty <= 99 && getScript(x.id)?.forSale).map(x => ({id:x.id, qty:x.qty}));
-      localStorage.setItem(LS_GUEST_CART, JSON.stringify(cart));
-      params.delete('cart'); const clean = location.pathname + (params.toString() ? '?' + params.toString() : '') + location.hash;
-      history.replaceState(null, '', clean);
-    } catch (e) { console.warn('Link keranjang tidak valid:', e); }
-  })();
+      if (!window.PeterStoreDB?.ready) throw new Error('Supabase belum dikonfigurasi.');
+      await window.PeterStoreDB.saveGuestCart(guestCartToken, cart);
+      const url = new URL(location.href); url.hash = '/cart'; url.searchParams.set('guestCart', guestCartToken);
+      try { await navigator.clipboard.writeText(url.toString()); toast('Link keranjang privat disalin. Buka link ini di perangkat lain.'); }
+      catch { window.prompt('Salin link keranjang privat ini:', url.toString()); }
+    } catch (e) { toast('Gagal membuat link sinkron: ' + (e.message || 'periksa Supabase')); }
+  };
+  // Link membawa token rahasia acak; perangkat yang membuka link memakai keranjang database yang sama.
+  const initGuestCartSync = async () => {
+    const params = new URLSearchParams(location.search);
+    const linkToken = params.get('guestCart');
+    try {
+      if (linkToken && /^[a-f0-9]{64}$/.test(linkToken)) {
+        guestCartToken = linkToken;
+        localStorage.setItem(LS_GUEST_CART_TOKEN, guestCartToken);
+        params.delete('guestCart');
+        const clean = location.pathname + (params.toString() ? '?' + params.toString() : '') + location.hash;
+        history.replaceState(null, '', clean);
+      } else {
+        guestCartToken = localStorage.getItem(LS_GUEST_CART_TOKEN) || '';
+      }
+      if (!guestCartToken || !window.PeterStoreDB?.ready) return;
+      const remote = await window.PeterStoreDB.loadGuestCart(guestCartToken);
+      if (remote) {
+        cart = remote.filter(x => x && typeof x.id === 'string' && Number.isInteger(x.qty) && x.qty > 0 && x.qty <= 99 && getScript(x.id)?.forSale).map(x => ({id:x.id, qty:x.qty}));
+        localStorage.setItem(LS_GUEST_CART, JSON.stringify(cart));
+      } else if (cart.length) {
+        await window.PeterStoreDB.saveGuestCart(guestCartToken, cart);
+        lastRemoteCartSignature = JSON.stringify(cart);
+      }
+      lastRemoteCartSignature = JSON.stringify(cart);
+      updateCartBadge(); render();
+      // Poll RPC every 5 seconds so already-open devices receive remote changes too.
+      if (!window.__peterGuestCartPoll && guestCartToken) {
+        window.__peterGuestCartPoll = setInterval(async () => {
+          try {
+            if (!guestCartToken || !window.PeterStoreDB?.ready || Date.now() - lastLocalCartEditAt < 2500) return;
+            const latest = await window.PeterStoreDB.loadGuestCart(guestCartToken);
+            if (!latest || !Array.isArray(latest.items)) return;
+            const next = latest.items.filter(x => x && typeof x.id === 'string' && Number.isInteger(x.qty) && x.qty > 0 && x.qty <= 99 && getScript(x.id)?.forSale).map(x => ({id:x.id, qty:x.qty}));
+            const signature = JSON.stringify(next);
+            if (signature !== lastRemoteCartSignature) {
+              cart = next; lastRemoteCartSignature = signature;
+              localStorage.setItem(LS_GUEST_CART, signature); updateCartBadge(); render();
+            }
+          } catch (e) { console.warn('Polling keranjang:', e.message); }
+        }, 5000);
+      }
+    } catch (e) { console.warn('Auto Cart Sync:', e.message); toast('Sinkronisasi keranjang gagal. Periksa migrasi Supabase.'); }
+  };
 
   const addToCart = async (id) => {
     const product = getScript(id);
@@ -262,7 +308,7 @@
         <button class="btn btn-primary" id="newPostBtn"><span class="plus">+</span> Posting Script</button>`;
     } else {
       authArea.innerHTML = `
-        <button class="btn btn-ghost" data-login>${window.PeterStoreDB?.client ? 'Admin Login' : 'Login akun'}</button>`;
+        <button class="btn btn-ghost" data-login>${window.PeterStoreDB?.client ? 'Login akun / keranjang' : 'Login akun'}</button>`;
     }
   };
 
@@ -949,15 +995,12 @@ YouTube | Tutorial | https://youtube.com/@channel">${escapeHtml((CFG.partners ||
     } catch (err) { toast(err?.message || 'Login Supabase gagal.'); }
   });
 
-  // Restore verified admin session and hydrate the account-specific cart.
+  // Restore admin session separately; guest cart sync never requires customer login.
   (async () => {
-    try {
-      if (!window.PeterStoreDB?.ready) return;
-      isOwner = await window.PeterStoreDB.isAdmin();
-      const {data:{user}} = await window.PeterStoreDB.client.auth.getUser();
-      if (user) { const savedCart = await window.PeterStoreDB.getCart(); cart = savedCart.length ? savedCart : loadGuestCart(); await syncCartToSupabase(); }
-      render();
-    } catch (err) { console.warn('Supabase session/cart:', err.message); }
+    try { if (window.PeterStoreDB?.ready) isOwner = await window.PeterStoreDB.isAdmin(); }
+    catch (err) { console.warn('Supabase admin session:', err.message); }
+    await initGuestCartSync();
+    render();
   })();
 
   /* ---------------- post form ---------------- */
