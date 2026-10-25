@@ -19,7 +19,7 @@ window.PETER_CONFIG = {
   // Link partner/sosial yang tampil di bagian Partner & Links.
   // Ganti URL contoh atau tambahkan link milik partner kamu.
   partners: [
-    { name: 'GitHub', label: 'Website source', url: 'https://github.com/petergt1980/petergtpsweb' },
+    { name: 'GitHub', label: 'Website source', url: 'https://github.com/YOUR-NAME/YOUR-REPO' },
     { name: 'WhatsApp', label: 'Kontak / order', url: '' }
   ],
   // Notifikasi WhatsApp dikirim melalui Supabase Edge Function.
